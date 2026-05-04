@@ -17,6 +17,7 @@ import net.neoforged.neoforge.client.event.RegisterKeyMappingsEvent;
 import net.neoforged.neoforge.common.NeoForge;
 import net.revilodev.codex.abilities.AbilitiesAttachments;
 import net.revilodev.codex.abilities.AbilitiesNetwork;
+import net.revilodev.codex.abilities.AbilityElement;
 import net.revilodev.codex.abilities.AbilityId;
 import net.revilodev.codex.abilities.AbilityRegistry;
 import net.revilodev.codex.abilities.PlayerAbilities;
@@ -134,10 +135,20 @@ public final class AbilityKeybinds {
         }
         altWasDown = altDown;
 
+        Set<KeyMapping> handled = new HashSet<>();
         for (var entry : KEYS.entrySet()) {
-            if (entry.getKey().isCore()) continue;
-            while (entry.getValue().consumeClick()) {
-                useAbility(entry.getKey());
+            AbilityId abilityId = entry.getKey();
+            if (abilityId.isCore() || !abilityId.isSpecialization()) continue;
+            KeyMapping mapping = entry.getValue();
+            if (!handled.add(mapping)) continue;
+            while (mapping.consumeClick()) {
+                AbilityId selected = data.selectedSpecialization(abilityId.element());
+                AbilityId resolved = (selected != null)
+                        ? selected
+                        : firstUnlockedSpecialization(data, abilityId.element());
+                if (resolved != null) {
+                    useAbility(resolved);
+                }
             }
         }
     }
@@ -157,7 +168,32 @@ public final class AbilityKeybinds {
 
     private static List<AbilityId> altGrid(PlayerAbilities data) {
         if (data == null) return List.of();
-        return AbilityRegistry.all().stream().map(def -> def.id()).filter(data::unlocked).toList();
+        List<AbilityId> selected = new ArrayList<>();
+        for (AbilityElement element : AbilityElement.values()) {
+            AbilityId id = data.selectedSpecialization(element);
+            if (id != null && data.rank(id.core()) > 0) {
+                selected.add(id);
+            }
+        }
+        if (!selected.isEmpty()) {
+            return List.copyOf(selected);
+        }
+        return AbilityRegistry.all().stream()
+                .map(def -> def.id())
+                .filter(AbilityId::isSpecialization)
+                .filter(data::unlocked)
+                .toList();
+    }
+
+    private static AbilityId firstUnlockedSpecialization(PlayerAbilities data, AbilityElement element) {
+        if (data == null || element == null) return null;
+        for (var def : AbilityRegistry.all()) {
+            AbilityId id = def.id();
+            if (id.element() == element && id.isSpecialization()) {
+                return id;
+            }
+        }
+        return null;
     }
 
     private static void createMappings() {
@@ -220,7 +256,7 @@ public final class AbilityKeybinds {
         Minecraft mc = Minecraft.getInstance();
         if (mc.player == null || id == null) return;
         PlayerAbilities data = mc.player.getData(AbilitiesAttachments.PLAYER_ABILITIES.get());
-        if (!data.unlocked(id)) return;
+        if (!id.isSpecialization() || data.rank(id.core()) <= 0) return;
         AbilityUseFail fail = localFailure(mc, data, id);
         if (fail != null) {
             AbilityHudOverlay.notifyFailedUse(id, fail);

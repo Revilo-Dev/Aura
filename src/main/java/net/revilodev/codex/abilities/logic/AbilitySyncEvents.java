@@ -22,6 +22,7 @@ public final class AbilitySyncEvents {
     public static void register() {
         NeoForge.EVENT_BUS.addListener(AbilitySyncEvents::onLogin);
         NeoForge.EVENT_BUS.addListener(AbilitySyncEvents::onRespawn);
+        NeoForge.EVENT_BUS.addListener(AbilitySyncEvents::onChangedDimension);
         NeoForge.EVENT_BUS.addListener(AbilitySyncEvents::onServerTickPost);
     }
 
@@ -34,6 +35,10 @@ public final class AbilitySyncEvents {
     }
 
     private static void onRespawn(PlayerEvent.PlayerRespawnEvent event) {
+        if (event.getEntity() instanceof ServerPlayer player) markDirty(player);
+    }
+
+    private static void onChangedDimension(PlayerEvent.PlayerChangedDimensionEvent event) {
         if (event.getEntity() instanceof ServerPlayer player) markDirty(player);
     }
 

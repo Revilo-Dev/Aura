@@ -113,7 +113,7 @@ public final class SkillDetailsPanel extends AbstractWidget {
         int w = width;
         int h = height;
 
-        gg.fill(x, y, x + w, y + h, 0xEE303234);
+        gg.fill(x, y, x + w, y + h, 0xFF373737);
         gg.hLine(x, x + w, y, 0xAA5A5A5A);
         PlayerSkills ps = mc.player.getData(SkillsAttachments.PLAYER_SKILLS.get());
         int level = ps.level(skill.id());

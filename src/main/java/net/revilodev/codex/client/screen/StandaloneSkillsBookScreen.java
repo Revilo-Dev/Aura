@@ -70,8 +70,8 @@ public final class StandaloneSkillsBookScreen extends Screen {
             abilityList.setSelected(def == null ? null : def.id());
         });
         abilityList.setShowLocked(true);
-        abilityList.setHeaderTextOffsetX(15);
-        abilityDetails = new AbilityDetailsPanel(detailsX, detailsY, detailsW, detailsH);
+        abilityList.setHeaderTextOffsetX(19);
+        abilityDetails = new AbilityDetailsPanel(detailsX, detailsY + 3, detailsW, detailsH);
         abilityDetails.setContentTopOffset(3);
 
         skillsTab = new PanelTabButton(panelX - 31, panelY + 6, PanelTab.SKILLS, () -> setTab(PanelTab.SKILLS));
@@ -125,6 +125,71 @@ public final class StandaloneSkillsBookScreen extends Screen {
 
     @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
+        if (button == 0) {
+            if (skillsTab.mouseClicked(mouseX, mouseY, button) || abilitiesTab.mouseClicked(mouseX, mouseY, button)) {
+                return true;
+            }
+            if (isInsidePanelOrTabs(mouseX, mouseY)) {
+                if (activeTab == PanelTab.SKILLS && skillsDetails.hasSkill()) {
+                    boolean inListNode = skillsList.isOnSkillNode(mouseX, mouseY);
+                    boolean onButton = skillsDetails.isOnButtons(mouseX, mouseY);
+                    boolean inDetails = skillsDetails.containsPoint(mouseX, mouseY);
+                    boolean used = skillsDetails.mouseClicked(mouseX, mouseY, button) || skillsList.mouseClicked(mouseX, mouseY, button);
+                    if (!used && !inListNode && !onButton && !inDetails) {
+                        skillsDetails.setSkill(null);
+                        skillsList.setSelected(null);
+                    }
+                    return true;
+                }
+                if (activeTab == PanelTab.ABILITIES && abilityDetails.hasAbility()) {
+                    boolean inListNode = abilityList.isOnAbilityNode(mouseX, mouseY);
+                    boolean onButton = abilityDetails.isOnButtons(mouseX, mouseY);
+                    boolean inDetails = abilityDetails.containsPoint(mouseX, mouseY);
+                    boolean used = abilityDetails.mouseClicked(mouseX, mouseY, button) || abilityList.mouseClicked(mouseX, mouseY, button);
+                    if (!used && !inListNode && !onButton && !inDetails) {
+                        abilityDetails.setAbility(null);
+                        abilityList.setSelected(null);
+                    }
+                    return true;
+                }
+                if (activeTab == PanelTab.SKILLS) {
+                    skillsDetails.mouseClicked(mouseX, mouseY, button);
+                    skillsList.mouseClicked(mouseX, mouseY, button);
+                    return true;
+                }
+                abilityDetails.mouseClicked(mouseX, mouseY, button);
+                abilityList.mouseClicked(mouseX, mouseY, button);
+                return true;
+            }
+
+            boolean used = false;
+            if (activeTab == PanelTab.SKILLS && skillsDetails.hasSkill()) {
+                used = skillsDetails.mouseClicked(mouseX, mouseY, button) || skillsList.mouseClicked(mouseX, mouseY, button);
+                boolean inListNode = skillsList.isOnSkillNode(mouseX, mouseY);
+                boolean onButton = skillsDetails.isOnButtons(mouseX, mouseY);
+                boolean inDetails = skillsDetails.containsPoint(mouseX, mouseY);
+                if (!used && !inListNode && !onButton && !inDetails) {
+                    skillsDetails.setSkill(null);
+                    skillsList.setSelected(null);
+                }
+                return used;
+            } else if (activeTab == PanelTab.ABILITIES && abilityDetails.hasAbility()) {
+                used = abilityDetails.mouseClicked(mouseX, mouseY, button) || abilityList.mouseClicked(mouseX, mouseY, button);
+                boolean inListNode = abilityList.isOnAbilityNode(mouseX, mouseY);
+                boolean onButton = abilityDetails.isOnButtons(mouseX, mouseY);
+                boolean inDetails = abilityDetails.containsPoint(mouseX, mouseY);
+                if (!used && !inListNode && !onButton && !inDetails) {
+                    abilityDetails.setAbility(null);
+                    abilityList.setSelected(null);
+                }
+                return used;
+            } else if (activeTab == PanelTab.SKILLS) {
+                return skillsList.mouseClicked(mouseX, mouseY, button) || skillsDetails.mouseClicked(mouseX, mouseY, button);
+            } else {
+                return abilityDetails.mouseClicked(mouseX, mouseY, button) || abilityList.mouseClicked(mouseX, mouseY, button);
+            }
+        }
+
         boolean used = super.mouseClicked(mouseX, mouseY, button);
         if (button == 0 && !used) {
             if (activeTab == PanelTab.SKILLS && skillsDetails.hasSkill()) {
@@ -153,6 +218,20 @@ public final class StandaloneSkillsBookScreen extends Screen {
         return false;
     }
 
+    @Override
+    public boolean mouseDragged(double mouseX, double mouseY, int button, double dragX, double dragY) {
+        if (activeTab == PanelTab.ABILITIES && abilityList != null && abilityList.mouseDragged(mouseX, mouseY, button, dragX, dragY)) {
+            return true;
+        }
+        return super.mouseDragged(mouseX, mouseY, button, dragX, dragY);
+    }
+
+    @Override
+    public boolean mouseReleased(double mouseX, double mouseY, int button) {
+        if (abilityList != null) abilityList.endDrag();
+        return super.mouseReleased(mouseX, mouseY, button);
+    }
+
     private void setTab(PanelTab tab) {
         activeTab = tab;
         boolean skillsActive = activeTab == PanelTab.SKILLS;
@@ -176,7 +255,16 @@ public final class StandaloneSkillsBookScreen extends Screen {
         abilityDetails.upgradeButton().active = !skillsActive;
         abilityDetails.downgradeButton().visible = !skillsActive;
         abilityDetails.downgradeButton().active = !skillsActive;
-        abilityDetails.selectButton().visible = !skillsActive;
-        abilityDetails.selectButton().active = !skillsActive;
+        abilityDetails.selectButton().visible = !skillsActive && abilityDetails.hasAbility();
+        abilityDetails.selectButton().active = !skillsActive && abilityDetails.hasAbility();
+    }
+
+    private boolean isInsidePanelOrTabs(double mouseX, double mouseY) {
+        int left = panelX;
+        int top = panelY;
+        int right = panelX + panelWidth;
+        int bottom = panelY + panelHeight;
+        int tabLeft = panelX - 31;
+        return mouseX >= tabLeft && mouseX <= right && mouseY >= top && mouseY <= bottom;
     }
 }

@@ -122,7 +122,7 @@ public final class PlayerAbilities implements INBTSerializable<CompoundTag> {
     }
 
     public boolean selectSpecialization(AbilityId id) {
-        if (id == null || !id.isSpecialization() || !unlocked(id)) return false;
+        if (id == null || !id.isSpecialization() || rank(id.core()) <= 0) return false;
         selectedSpecializations.put(id.element(), id);
         return true;
     }
@@ -231,7 +231,7 @@ public final class PlayerAbilities implements INBTSerializable<CompoundTag> {
         }
         for (AbilityElement element : AbilityElement.values()) {
             AbilityId id = parseAbility(selectedTag.getString(element.name()));
-            if (id != null && id.element() == element && unlocked(id)) {
+            if (id != null && id.element() == element && rank(id.core()) > 0) {
                 selectedSpecializations.put(element, id);
             }
         }

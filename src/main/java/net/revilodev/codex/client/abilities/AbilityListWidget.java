@@ -29,6 +29,8 @@ public final class AbilityListWidget extends AbstractWidget {
             ResourceLocation.fromNamespaceAndPath(CodexMod.MOD_ID, "textures/gui/sprites/skill_widget-hovered.png");
     private static final ResourceLocation WIDGET_DISABLED_TEX =
             ResourceLocation.fromNamespaceAndPath(CodexMod.MOD_ID, "textures/gui/sprites/skill_widget-disabled.png");
+    private static final ResourceLocation WIDGET_DISABLED_HOVER_TEX =
+            ResourceLocation.fromNamespaceAndPath(CodexMod.MOD_ID, "textures/gui/sprites/skill_widget-disabled-hovered.png");
     private static final ResourceLocation WIDGET_PRIMARY_TEX =
             ResourceLocation.fromNamespaceAndPath(CodexMod.MOD_ID, "textures/gui/sprites/ability-primary.png");
     private static final ResourceLocation WIDGET_PRIMARY_DISABLED_TEX =
@@ -210,12 +212,17 @@ public final class AbilityListWidget extends AbstractWidget {
             boolean unlocked = rank > 0;
             boolean maxed = rank >= def.maxRank();
             boolean primary = def.type() == net.revilodev.codex.abilities.AbilityNodeType.CORE;
+            AbilityId selectedSpec = abilities.selectedSpecialization(def.element());
+            boolean specialization = def.type() == net.revilodev.codex.abilities.AbilityNodeType.SPECIALIZATION;
+            boolean isSelectedSpecialization = specialization && def.id() == selectedSpec;
 
             ResourceLocation tex;
             if (primary && !unlocked) {
                 tex = WIDGET_PRIMARY_DISABLED_TEX;
-            } else if (!primary && !abilities.canUpgrade(def.id()) && !unlocked) {
-                tex = WIDGET_DISABLED_TEX;
+            } else if (specialization && selectedSpec != null && !isSelectedSpecialization) {
+                tex = hovered ? WIDGET_DISABLED_HOVER_TEX : WIDGET_DISABLED_TEX;
+            } else if (!primary && !abilities.canUpgrade(def.id()) && !unlocked && !(specialization && isSelectedSpecialization)) {
+                tex = hovered ? WIDGET_DISABLED_HOVER_TEX : WIDGET_DISABLED_TEX;
             } else if (primary) {
                 tex = (selected == def.id() || hovered) ? WIDGET_PRIMARY_HOVER_TEX : WIDGET_PRIMARY_TEX;
             } else {

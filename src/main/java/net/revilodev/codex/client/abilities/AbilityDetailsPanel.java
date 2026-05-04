@@ -112,6 +112,8 @@ public final class AbilityDetailsPanel extends AbstractWidget {
         if (!visible || mc.player == null || ability == null) {
             upgrade.visible = false;
             downgrade.visible = false;
+            select.visible = false;
+            select.active = false;
             return;
         }
 
@@ -119,7 +121,7 @@ public final class AbilityDetailsPanel extends AbstractWidget {
         int y = getY();
         int w = width;
 
-        gg.fill(x, y, x + w, y + height, 0xFF303234);
+        gg.fill(x, y, x + w, y + height, 0xFF373737);
         gg.hLine(x, x + w, y, 0xAA5A5A5A);
 
         PlayerAbilities abilities = mc.player.getData(AbilitiesAttachments.PLAYER_ABILITIES.get());
@@ -181,7 +183,7 @@ public final class AbilityDetailsPanel extends AbstractWidget {
         upgrade.visible = !specialization;
         downgrade.visible = !specialization;
         select.visible = specialization;
-        select.active = specialization && abilities.unlocked(ability.id());
+        select.active = specialization;
     }
 
     @Override

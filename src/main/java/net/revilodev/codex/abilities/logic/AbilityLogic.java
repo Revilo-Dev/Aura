@@ -32,7 +32,7 @@ public final class AbilityLogic {
     public static boolean tryActivate(ServerPlayer player, AbilityId id) {
         if (player == null || id == null || !id.isSpecialization()) return false;
         PlayerAbilities abilities = player.getData(AbilitiesAttachments.PLAYER_ABILITIES.get());
-        if (!AbilityConfig.enabled(id) || abilities.rank(id) <= 0 || abilities.cooldownTicks(id) > 0) return false;
+        if (!AbilityConfig.enabled(id) || abilities.rank(id.core()) <= 0 || abilities.cooldownTicks(id) > 0) return false;
 
         PlayerSkills skills = player.getData(SkillsAttachments.PLAYER_SKILLS.get());
         double abilityPower = CodexAttributes.abilityPower(player, id);

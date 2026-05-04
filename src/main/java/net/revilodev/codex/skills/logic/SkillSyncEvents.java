@@ -24,6 +24,7 @@ public final class SkillSyncEvents {
     public static void register() {
         NeoForge.EVENT_BUS.addListener(SkillSyncEvents::onLogin);
         NeoForge.EVENT_BUS.addListener(SkillSyncEvents::onRespawn);
+        NeoForge.EVENT_BUS.addListener(SkillSyncEvents::onChangedDimension);
         NeoForge.EVENT_BUS.addListener(SkillSyncEvents::onServerTickPost);
     }
 
@@ -40,6 +41,12 @@ public final class SkillSyncEvents {
     }
 
     private static void onRespawn(PlayerEvent.PlayerRespawnEvent e) {
+        if (!(e.getEntity() instanceof ServerPlayer sp)) return;
+        applyEffectsNow(sp);
+        markDirty(sp);
+    }
+
+    private static void onChangedDimension(PlayerEvent.PlayerChangedDimensionEvent e) {
         if (!(e.getEntity() instanceof ServerPlayer sp)) return;
         applyEffectsNow(sp);
         markDirty(sp);
