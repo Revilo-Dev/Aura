@@ -17,6 +17,7 @@ import net.revilodev.codex.abilities.logic.AbilityScaling;
 import net.revilodev.codex.skills.PlayerSkills;
 import net.revilodev.codex.skills.SkillsAttachments;
 
+import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
@@ -48,8 +49,8 @@ public final class AbilityHudOverlay {
 
         boolean showGrid = Screen.hasAltDown();
         List<AbilityId> displayed = showGrid
-                ? AbilityRegistry.all().stream().map(AbilityDefinition::id).filter(abilities::unlocked).toList()
-                : abilities.recentAbilities();
+                ? AbilityKeybinds.altDisplayAbilities()
+                : activeSelectionAbilities(abilities);
         if (displayed.isEmpty()) return;
 
         int columns = showGrid ? Math.min(GRID_COLUMNS, displayed.size()) : displayed.size();
@@ -69,6 +70,29 @@ public final class AbilityHudOverlay {
                 drawAbility(gg, mc.font, origin.x + i * SLOT_STEP, origin.y, displayed.get(i), abilities, skills, false);
             }
         }
+    }
+
+    private static List<AbilityId> activeSelectionAbilities(PlayerAbilities abilities) {
+        if (abilities == null) return List.of();
+        List<AbilityId> selected = new ArrayList<>();
+        for (var element : net.revilodev.codex.abilities.AbilityElement.values()) {
+            AbilityId selectedId = abilities.selectedSpecialization(element);
+            if (selectedId != null && abilities.rank(selectedId.core()) > 0) {
+                selected.add(selectedId);
+            }
+        }
+        if (!selected.isEmpty()) {
+            return List.copyOf(selected);
+        }
+        List<AbilityId> recent = abilities.recentAbilities();
+        if (!recent.isEmpty()) {
+            return recent;
+        }
+        return AbilityRegistry.all().stream()
+                .map(AbilityDefinition::id)
+                .filter(AbilityId::isSpecialization)
+                .filter(abilities::unlocked)
+                .toList();
     }
 
     private static Origin resolveOrigin(GuiGraphics gg, int contentWidth, int contentHeight, AbilityConfig.HudPosition position) {
