@@ -11,6 +11,7 @@ import net.revilodev.codex.abilities.AbilityConfig;
 import net.revilodev.codex.attributes.CodexAttributes;
 import net.revilodev.codex.effect.CodexMobEffects;
 import net.revilodev.codex.effect.CodexPotions;
+import net.revilodev.codex.entity.ModEntities;
 import net.revilodev.codex.item.ModItems;
 import net.revilodev.codex.skills.SkillsAttachments;
 import net.revilodev.codex.skills.SkillConfig;
@@ -27,6 +28,7 @@ public final class CodexMod {
         CodexAttributes.register(modBus);
         CodexMobEffects.register(modBus);
         CodexPotions.register(modBus);
+        ModEntities.register(modBus);
         CodexStats.register(modBus);
         container.registerConfig(ModConfig.Type.SERVER, SkillConfig.SPEC);
         container.registerConfig(ModConfig.Type.SERVER, AbilityConfig.SPEC, MOD_ID + "-abilities-server.toml");

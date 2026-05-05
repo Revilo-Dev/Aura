@@ -147,6 +147,9 @@ public final class SkillListWidget extends AbstractWidget {
             int iconX = x + (CELL_SIZE - ICON_SIZE) / 2;
             int iconY = y + (CELL_SIZE - ICON_SIZE) / 2;
             gg.blit(def.icon(), iconX, iconY, 0, 0, ICON_SIZE, ICON_SIZE, ICON_SIZE, ICON_SIZE);
+            if (hovered) {
+                gg.renderTooltip(mc.font, Component.literal(def.title() + " Lv " + ps.level(def.id())), mouseX, mouseY);
+            }
         }
     }
 

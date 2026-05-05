@@ -74,6 +74,10 @@ public final class AbilityHudOverlay {
 
     private static List<AbilityId> activeSelectionAbilities(PlayerAbilities abilities) {
         if (abilities == null) return List.of();
+        List<AbilityId> recent = new ArrayList<>(abilities.recentAbilities());
+        if (!recent.isEmpty()) {
+            return List.copyOf(recent.subList(0, Math.min(3, recent.size())));
+        }
         List<AbilityId> selected = new ArrayList<>();
         for (var element : net.revilodev.codex.abilities.AbilityElement.values()) {
             AbilityId selectedId = abilities.selectedSpecialization(element);
@@ -83,10 +87,6 @@ public final class AbilityHudOverlay {
         }
         if (!selected.isEmpty()) {
             return List.copyOf(selected);
-        }
-        List<AbilityId> recent = abilities.recentAbilities();
-        if (!recent.isEmpty()) {
-            return recent;
         }
         return AbilityRegistry.all().stream()
                 .map(AbilityDefinition::id)

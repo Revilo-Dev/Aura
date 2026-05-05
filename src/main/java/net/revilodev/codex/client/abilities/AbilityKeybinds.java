@@ -107,6 +107,17 @@ public final class AbilityKeybinds {
         return grid.get(Mth.clamp(altSelectionIndex, 0, grid.size() - 1));
     }
 
+    public static List<AbilityId> altDisplayAbilities() {
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.player == null) return List.of();
+        PlayerAbilities data = mc.player.getData(AbilitiesAttachments.PLAYER_ABILITIES.get());
+        return AbilityRegistry.all().stream()
+                .map(def -> def.id())
+                .filter(AbilityId::isSpecialization)
+                .filter(data::unlocked)
+                .toList();
+    }
+
     private static void onRegisterKeyMappings(RegisterKeyMappingsEvent event) {
         for (KeyMapping key : UNIQUE_KEYS) event.register(key);
     }
@@ -168,16 +179,6 @@ public final class AbilityKeybinds {
 
     private static List<AbilityId> altGrid(PlayerAbilities data) {
         if (data == null) return List.of();
-        List<AbilityId> selected = new ArrayList<>();
-        for (AbilityElement element : AbilityElement.values()) {
-            AbilityId id = data.selectedSpecialization(element);
-            if (id != null && data.rank(id.core()) > 0) {
-                selected.add(id);
-            }
-        }
-        if (!selected.isEmpty()) {
-            return List.copyOf(selected);
-        }
         return AbilityRegistry.all().stream()
                 .map(def -> def.id())
                 .filter(AbilityId::isSpecialization)

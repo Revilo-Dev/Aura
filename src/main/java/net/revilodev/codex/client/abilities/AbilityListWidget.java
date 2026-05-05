@@ -191,6 +191,7 @@ public final class AbilityListWidget extends AbstractWidget {
         offsetY = Math.max(0, Math.min(offsetY, maxOffsetY));
 
         int top = viewportY;
+        Component hoveredTooltip = null;
         RenderSystem.enableBlend();
         gg.enableScissor(viewportX, viewportY, viewportX + viewportW, viewportY + viewportH);
         for (Node node : nodes) {
@@ -233,8 +234,15 @@ public final class AbilityListWidget extends AbstractWidget {
             }
             drawScaledTile(gg, tex, x, y, CELL_SIZE, CELL_SIZE);
             gg.blit(def.iconTexture(), x + 3, y + 3, 0, 0, 16, 16, 16, 16);
+            if (hovered) {
+                int lvl = abilities.rank(def.id().core());
+                hoveredTooltip = Component.literal(def.title() + " Lv " + lvl);
+            }
         }
         gg.disableScissor();
+        if (hoveredTooltip != null) {
+            gg.renderTooltip(mc.font, hoveredTooltip, mouseX, mouseY - 6);
+        }
     }
 
     @Override
