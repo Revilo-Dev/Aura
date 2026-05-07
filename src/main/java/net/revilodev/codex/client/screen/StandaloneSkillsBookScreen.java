@@ -125,6 +125,9 @@ public final class StandaloneSkillsBookScreen extends Screen {
 
     @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
+        if (button == 1 && activeTab == PanelTab.SKILLS) {
+            return skillsList.mouseClicked(mouseX, mouseY, button) || super.mouseClicked(mouseX, mouseY, button);
+        }
         if (button == 0) {
             if (skillsTab.mouseClicked(mouseX, mouseY, button) || abilitiesTab.mouseClicked(mouseX, mouseY, button)) {
                 return true;
@@ -240,23 +243,23 @@ public final class StandaloneSkillsBookScreen extends Screen {
 
         skillsList.visible = skillsActive;
         skillsList.active = skillsActive;
-        skillsDetails.visible = skillsActive;
-        skillsDetails.active = skillsActive;
-        skillsDetails.upgradeButton().visible = skillsActive;
-        skillsDetails.upgradeButton().active = skillsActive;
-        skillsDetails.downgradeButton().visible = skillsActive;
-        skillsDetails.downgradeButton().active = skillsActive;
+        skillsDetails.visible = false;
+        skillsDetails.active = false;
+        skillsDetails.upgradeButton().visible = false;
+        skillsDetails.upgradeButton().active = false;
+        skillsDetails.downgradeButton().visible = false;
+        skillsDetails.downgradeButton().active = false;
 
         abilityList.visible = !skillsActive;
         abilityList.active = !skillsActive;
-        abilityDetails.visible = !skillsActive;
-        abilityDetails.active = !skillsActive;
-        abilityDetails.upgradeButton().visible = !skillsActive;
-        abilityDetails.upgradeButton().active = !skillsActive;
-        abilityDetails.downgradeButton().visible = !skillsActive;
-        abilityDetails.downgradeButton().active = !skillsActive;
-        abilityDetails.selectButton().visible = !skillsActive && abilityDetails.hasAbility();
-        abilityDetails.selectButton().active = !skillsActive && abilityDetails.hasAbility();
+        abilityDetails.visible = false;
+        abilityDetails.active = false;
+        abilityDetails.upgradeButton().visible = false;
+        abilityDetails.upgradeButton().active = false;
+        abilityDetails.downgradeButton().visible = false;
+        abilityDetails.downgradeButton().active = false;
+        abilityDetails.selectButton().visible = false;
+        abilityDetails.selectButton().active = false;
     }
 
     private boolean isInsidePanelOrTabs(double mouseX, double mouseY) {

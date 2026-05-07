@@ -87,7 +87,7 @@ public final class SkillsPanelClient {
         });
         st.abilityList.setHeaderVisible(false);
         st.abilityList.setShowLocked(true);
-        st.abilityList.setViewportTweaks(-4, 5);
+        st.abilityList.setViewportTweaks(-5, 11);
         st.abilityDetails = new AbilityDetailsPanel(0, 0, AbilityListWidget.gridWidth(), PANEL_H / 3);
         st.skillsTab = new PanelTabButton(0, 0, PanelTab.SKILLS, () -> setTab(st, PanelTab.SKILLS));
         st.abilitiesTab = new PanelTabButton(0, 0, PanelTab.ABILITIES, () -> setTab(st, PanelTab.ABILITIES));
@@ -142,15 +142,8 @@ public final class SkillsPanelClient {
         st.abilitiesTab.render(event.getGuiGraphics(), event.getMouseX(), event.getMouseY(), event.getPartialTick());
         if (st.activeTab == PanelTab.SKILLS) {
             st.skillsList.render(event.getGuiGraphics(), event.getMouseX(), event.getMouseY(), event.getPartialTick());
-            st.skillsDetails.render(event.getGuiGraphics(), event.getMouseX(), event.getMouseY(), event.getPartialTick());
-            st.skillsDetails.upgradeButton().render(event.getGuiGraphics(), event.getMouseX(), event.getMouseY(), event.getPartialTick());
-            st.skillsDetails.downgradeButton().render(event.getGuiGraphics(), event.getMouseX(), event.getMouseY(), event.getPartialTick());
         } else {
             st.abilityList.render(event.getGuiGraphics(), event.getMouseX(), event.getMouseY(), event.getPartialTick());
-            st.abilityDetails.render(event.getGuiGraphics(), event.getMouseX(), event.getMouseY(), event.getPartialTick());
-            st.abilityDetails.upgradeButton().render(event.getGuiGraphics(), event.getMouseX(), event.getMouseY(), event.getPartialTick());
-            st.abilityDetails.downgradeButton().render(event.getGuiGraphics(), event.getMouseX(), event.getMouseY(), event.getPartialTick());
-            st.abilityDetails.selectButton().render(event.getGuiGraphics(), event.getMouseX(), event.getMouseY(), event.getPartialTick());
         }
         renderPointsBadge(event.getGuiGraphics(), st, inv);
         event.getGuiGraphics().pose().popPose();
@@ -165,11 +158,8 @@ public final class SkillsPanelClient {
         double deltaY = event.getScrollDeltaY();
         boolean used = false;
 
-        if (st.activeTab == PanelTab.SKILLS && st.skillsDetails.visible) {
-            used = st.skillsDetails.mouseScrolled(mx, my, deltaY);
-        } else if (st.activeTab == PanelTab.ABILITIES && st.abilityDetails.visible) {
-            used = st.abilityDetails.mouseScrolled(mx, my, deltaY);
-            if (!used) used = st.abilityList.mouseScrolled(mx, my, deltaY);
+        if (st.activeTab == PanelTab.ABILITIES) {
+            used = st.abilityList.mouseScrolled(mx, my, deltaY);
         }
 
         if (used) event.setCanceled(true);
@@ -192,38 +182,20 @@ public final class SkillsPanelClient {
     public static void onMousePressed(ScreenEvent.MouseButtonPressed.Pre event) {
         State st = STATES.get(event.getScreen());
         if (st == null || !st.open) return;
-        if (event.getButton() != 0) return;
+        if (event.getButton() != 0 && event.getButton() != 1) return;
 
         double mouseX = event.getMouseX();
         double mouseY = event.getMouseY();
-        if (st.skillsTab.mouseClicked(mouseX, mouseY, event.getButton()) || st.abilitiesTab.mouseClicked(mouseX, mouseY, event.getButton())) {
+        if (event.getButton() == 0 && (st.skillsTab.mouseClicked(mouseX, mouseY, event.getButton()) || st.abilitiesTab.mouseClicked(mouseX, mouseY, event.getButton()))) {
             event.setCanceled(true);
             return;
         }
 
         boolean used = false;
-        if (st.activeTab == PanelTab.SKILLS && st.skillsDetails.hasSkill()) {
-            used = st.skillsDetails.mouseClicked(mouseX, mouseY, event.getButton()) || st.skillsList.mouseClicked(mouseX, mouseY, event.getButton());
-            boolean inNode = st.skillsList.isOnSkillNode(mouseX, mouseY);
-            boolean onButton = st.skillsDetails.isOnButtons(mouseX, mouseY);
-            boolean inDetails = st.skillsDetails.containsPoint(mouseX, mouseY);
-            if (!used && !inNode && !onButton && !inDetails) {
-                st.skillsDetails.setSkill(null);
-                st.skillsList.setSelected(null);
-            }
-        } else if (st.activeTab == PanelTab.ABILITIES && st.abilityDetails.hasAbility()) {
-            used = st.abilityDetails.mouseClicked(mouseX, mouseY, event.getButton()) || st.abilityList.mouseClicked(mouseX, mouseY, event.getButton());
-            boolean inNode = st.abilityList.isOnAbilityNode(mouseX, mouseY);
-            boolean onButton = st.abilityDetails.isOnButtons(mouseX, mouseY);
-            boolean inDetails = st.abilityDetails.containsPoint(mouseX, mouseY);
-            if (!used && !inNode && !onButton && !inDetails) {
-                st.abilityDetails.setAbility(null);
-                st.abilityList.setSelected(null);
-            }
-        } else if (st.activeTab == PanelTab.SKILLS) {
-            used = st.skillsList.mouseClicked(mouseX, mouseY, event.getButton()) || st.skillsDetails.mouseClicked(mouseX, mouseY, event.getButton());
+        if (st.activeTab == PanelTab.SKILLS) {
+            used = st.skillsList.mouseClicked(mouseX, mouseY, event.getButton());
         } else {
-            used = st.abilityList.mouseClicked(mouseX, mouseY, event.getButton()) || st.abilityDetails.mouseClicked(mouseX, mouseY, event.getButton());
+            used = st.abilityList.mouseClicked(mouseX, mouseY, event.getButton());
         }
 
         if (used || isInsideOverlay(st, mouseX, mouseY)) {
@@ -397,23 +369,23 @@ public final class SkillsPanelClient {
 
         st.skillsList.visible = skillsActive;
         st.skillsList.active = skillsActive;
-        st.skillsDetails.visible = skillsActive;
-        st.skillsDetails.active = skillsActive;
-        st.skillsDetails.upgradeButton().visible = skillsActive;
-        st.skillsDetails.upgradeButton().active = skillsActive;
-        st.skillsDetails.downgradeButton().visible = skillsActive;
-        st.skillsDetails.downgradeButton().active = skillsActive;
+        st.skillsDetails.visible = false;
+        st.skillsDetails.active = false;
+        st.skillsDetails.upgradeButton().visible = false;
+        st.skillsDetails.upgradeButton().active = false;
+        st.skillsDetails.downgradeButton().visible = false;
+        st.skillsDetails.downgradeButton().active = false;
 
         st.abilityList.visible = abilitiesActive;
         st.abilityList.active = abilitiesActive;
-        st.abilityDetails.visible = abilitiesActive;
-        st.abilityDetails.active = abilitiesActive;
-        st.abilityDetails.upgradeButton().visible = abilitiesActive;
-        st.abilityDetails.upgradeButton().active = abilitiesActive;
-        st.abilityDetails.downgradeButton().visible = abilitiesActive;
-        st.abilityDetails.downgradeButton().active = abilitiesActive;
-        st.abilityDetails.selectButton().visible = abilitiesActive && st.abilityDetails.hasAbility();
-        st.abilityDetails.selectButton().active = abilitiesActive && st.abilityDetails.hasAbility();
+        st.abilityDetails.visible = false;
+        st.abilityDetails.active = false;
+        st.abilityDetails.upgradeButton().visible = false;
+        st.abilityDetails.upgradeButton().active = false;
+        st.abilityDetails.downgradeButton().visible = false;
+        st.abilityDetails.downgradeButton().active = false;
+        st.abilityDetails.selectButton().visible = false;
+        st.abilityDetails.selectButton().active = false;
     }
 
     private static void renderPointsBadge(GuiGraphics gg, State st, InventoryScreen inv) {

@@ -5,8 +5,10 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.narration.NarrationElementOutput;
+import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
+import net.neoforged.neoforge.network.PacketDistributor;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.api.distmarker.OnlyIn;
 import net.revilodev.codex.CodexMod;
@@ -15,6 +17,7 @@ import net.revilodev.codex.skills.SkillDefinition;
 import net.revilodev.codex.skills.SkillId;
 import net.revilodev.codex.skills.SkillRegistry;
 import net.revilodev.codex.skills.SkillsAttachments;
+import net.revilodev.codex.skills.SkillsNetwork;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -148,14 +151,23 @@ public final class SkillListWidget extends AbstractWidget {
             int iconY = y + (CELL_SIZE - ICON_SIZE) / 2;
             gg.blit(def.icon(), iconX, iconY, 0, 0, ICON_SIZE, ICON_SIZE, ICON_SIZE, ICON_SIZE);
             if (hovered) {
-                gg.renderTooltip(mc.font, Component.literal(def.title() + " Lv " + ps.level(def.id())), mouseX, mouseY);
+                List<Component> lines = List.of(
+                        Component.empty()
+                                .append(Component.literal(def.title()).withStyle(ChatFormatting.YELLOW, ChatFormatting.BOLD))
+                                .append(Component.literal(" "))
+                                .append(Component.literal("Lv " + ps.level(def.id())).withStyle(ChatFormatting.BLUE)),
+                        Component.literal(def.description()),
+                        Component.literal("Left Click to upgrade").withStyle(ChatFormatting.GREEN),
+                        Component.literal("Right Click to downgrade").withStyle(ChatFormatting.RED)
+                );
+                gg.renderTooltip(mc.font, lines, java.util.Optional.empty(), mouseX, mouseY);
             }
         }
     }
 
     @Override
     public boolean mouseClicked(double mx, double my, int button) {
-        if (!visible || !active || button != 0 || !isMouseOver(mx, my)) return false;
+        if (!visible || !active || (button != 0 && button != 1) || !isMouseOver(mx, my) || mc.player == null) return false;
         Node node = nodeAt(mx, my);
         if (node == null) {
             selected = null;
@@ -164,6 +176,11 @@ public final class SkillListWidget extends AbstractWidget {
         }
         selected = node.def.id();
         if (onClick != null) onClick.accept(node.def);
+        if (button == 0) {
+            PacketDistributor.sendToServer(new SkillsNetwork.SkillActionPayload(node.def.id().ordinal(), true));
+        } else if (button == 1) {
+            PacketDistributor.sendToServer(new SkillsNetwork.SkillActionPayload(node.def.id().ordinal(), false));
+        }
         return true;
     }
 

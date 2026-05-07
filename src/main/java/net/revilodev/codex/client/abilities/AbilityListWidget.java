@@ -5,17 +5,23 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.narration.NarrationElementOutput;
+import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
+import net.neoforged.neoforge.network.PacketDistributor;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.api.distmarker.OnlyIn;
 import net.revilodev.codex.CodexMod;
 import net.revilodev.codex.abilities.AbilitiesAttachments;
+import net.revilodev.codex.abilities.AbilitiesNetwork;
 import net.revilodev.codex.abilities.AbilityElement;
 import net.revilodev.codex.abilities.AbilityDefinition;
 import net.revilodev.codex.abilities.AbilityId;
 import net.revilodev.codex.abilities.AbilityRegistry;
 import net.revilodev.codex.abilities.PlayerAbilities;
+import net.revilodev.codex.abilities.logic.AbilityScaling;
+import net.revilodev.codex.skills.PlayerSkills;
+import net.revilodev.codex.skills.SkillsAttachments;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -174,6 +180,7 @@ public final class AbilityListWidget extends AbstractWidget {
     protected void renderWidget(GuiGraphics gg, int mouseX, int mouseY, float partialTick) {
         if (!visible || mc.player == null) return;
         PlayerAbilities abilities = mc.player.getData(AbilitiesAttachments.PLAYER_ABILITIES.get());
+        PlayerSkills skills = mc.player.getData(SkillsAttachments.PLAYER_SKILLS.get());
         if (!showLocked) {
             reloadAbilities();
         }
@@ -236,13 +243,29 @@ public final class AbilityListWidget extends AbstractWidget {
             gg.blit(def.iconTexture(), x + 3, y + 3, 0, 0, 16, 16, 16, 16);
             if (hovered) {
                 int lvl = abilities.rank(def.id().core());
-                hoveredTooltip = Component.literal(def.title() + " Lv " + lvl);
+                String cooldownText = "Cooldown " + formatSeconds(AbilityScaling.cooldownTicks(def.id(), Math.max(1, lvl), skills));
+                String durationText = "Duration " + formatSeconds(AbilityScaling.durationTicks(def.id(), Math.max(1, lvl), 1.0D));
+                String dpsText = "DPS " + formatDps(AbilityScaling.damage(def.id(), Math.max(1, lvl), 1.0D), AbilityScaling.durationTicks(def.id(), Math.max(1, lvl), 1.0D));
+                hoveredTooltip = null;
+                gg.disableScissor();
+                gg.renderTooltip(mc.font, List.of(
+                        Component.empty()
+                                .append(Component.literal(def.title()).withStyle(ChatFormatting.YELLOW, ChatFormatting.BOLD))
+                                .append(Component.literal(" "))
+                                .append(Component.literal("Lv " + lvl).withStyle(ChatFormatting.DARK_PURPLE)),
+                        Component.literal(def.description()),
+                        Component.empty()
+                                .append(Component.literal(cooldownText).withStyle(ChatFormatting.YELLOW))
+                                .append(Component.literal(" | ").withStyle(ChatFormatting.GRAY))
+                                .append(Component.literal(durationText).withStyle(ChatFormatting.BLUE))
+                                .append(Component.literal(" | ").withStyle(ChatFormatting.GRAY))
+                                .append(Component.literal(dpsText).withStyle(ChatFormatting.RED)),
+                        Component.literal("Click to select").withStyle(ChatFormatting.GREEN)
+                ), java.util.Optional.empty(), mouseX, mouseY - 4);
+                gg.enableScissor(viewportX, viewportY, viewportX + viewportW, viewportY + viewportH);
             }
         }
         gg.disableScissor();
-        if (hoveredTooltip != null) {
-            gg.renderTooltip(mc.font, hoveredTooltip, mouseX, mouseY - 6);
-        }
     }
 
     @Override
@@ -256,6 +279,9 @@ public final class AbilityListWidget extends AbstractWidget {
         }
         selected = node.def.id();
         if (onClick != null) onClick.accept(node.def);
+        if (node.def.type() == net.revilodev.codex.abilities.AbilityNodeType.SPECIALIZATION) {
+            PacketDistributor.sendToServer(new AbilitiesNetwork.AbilityActionPayload(2, node.def.id().ordinal()));
+        }
         return true;
     }
 
@@ -312,4 +338,13 @@ public final class AbilityListWidget extends AbstractWidget {
     }
 
     private record Node(AbilityDefinition def, int col, int row) {}
+
+    private static String formatSeconds(int ticks) {
+        return String.format(java.util.Locale.ROOT, "%.2fs", ticks / 20.0D);
+    }
+
+    private static String formatDps(float damage, int durationTicks) {
+        double seconds = Math.max(0.05D, durationTicks / 20.0D);
+        return String.format(java.util.Locale.ROOT, "%.1fhp", damage / seconds);
+    }
 }
