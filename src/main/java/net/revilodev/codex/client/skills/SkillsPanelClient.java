@@ -425,7 +425,7 @@ public final class SkillsPanelClient {
                 ? mc.player.getData(AbilitiesAttachments.PLAYER_ABILITIES.get()).points()
                 : mc.player.getData(SkillsAttachments.PLAYER_SKILLS.get()).points();
 
-        String label = abilitiesTab ? "Ability Points: " + points : "Points: " + points;
+        String label = abilitiesTab ? "Ability Points: " + points : "Skill Points: " + points;
         float scale = 0.85F;
         int x = (abilitiesTab ? st.abilityList.getX() + 15 : st.skillsList.getX()) + 1;
         int y = (abilitiesTab ? st.abilityList.getY() : st.skillsList.getY()) + 4;

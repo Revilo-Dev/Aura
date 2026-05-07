@@ -77,6 +77,7 @@ public final class AbilityKeybinds {
         List<AbilityId> out = new ArrayList<>();
         for (var entry : KEYS.entrySet()) {
             if (entry.getKey() == id) continue;
+            if (entry.getKey().element() == id.element()) continue;
             KeyMapping other = entry.getValue();
             if (other != null && key.equals(other.getKey())) out.add(entry.getKey());
         }
@@ -111,11 +112,7 @@ public final class AbilityKeybinds {
         Minecraft mc = Minecraft.getInstance();
         if (mc.player == null) return List.of();
         PlayerAbilities data = mc.player.getData(AbilitiesAttachments.PLAYER_ABILITIES.get());
-        return AbilityRegistry.all().stream()
-                .map(def -> def.id())
-                .filter(AbilityId::isSpecialization)
-                .filter(data::unlocked)
-                .toList();
+        return selectedAltAbilities(data);
     }
 
     private static void onRegisterKeyMappings(RegisterKeyMappingsEvent event) {
@@ -178,12 +175,19 @@ public final class AbilityKeybinds {
     }
 
     private static List<AbilityId> altGrid(PlayerAbilities data) {
+        return selectedAltAbilities(data);
+    }
+
+    private static List<AbilityId> selectedAltAbilities(PlayerAbilities data) {
         if (data == null) return List.of();
-        return AbilityRegistry.all().stream()
-                .map(def -> def.id())
-                .filter(AbilityId::isSpecialization)
-                .filter(data::unlocked)
-                .toList();
+        List<AbilityId> selected = new ArrayList<>();
+        for (AbilityElement element : AbilityElement.values()) {
+            AbilityId id = data.selectedSpecialization(element);
+            if (id != null && id.isSpecialization() && data.rank(id.core()) > 0) {
+                selected.add(id);
+            }
+        }
+        return List.copyOf(selected);
     }
 
     private static AbilityId firstUnlockedSpecialization(PlayerAbilities data, AbilityElement element) {
@@ -207,7 +211,6 @@ public final class AbilityKeybinds {
         addElementShared(AbilityId.ICE_NOVA, "ice", InputConstants.KEY_X);
         addElementShared(AbilityId.ICE_PIERCE, "ice", InputConstants.KEY_X);
         addElementShared(AbilityId.ICE_IMPLODE, "ice", InputConstants.KEY_X);
-        addElementShared(AbilityId.ICE_GLACIER, "ice", InputConstants.KEY_X);
         addElementShared(AbilityId.ICE_STORM, "ice", InputConstants.KEY_X);
 
         addElementShared(AbilityId.LIGHTNING_STRIKE, "lightning", InputConstants.KEY_C);

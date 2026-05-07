@@ -170,8 +170,8 @@ public final class AbilityDetailsPanel extends AbstractWidget {
         gg.enableScissor(x + 2, viewportTop, x + w - 2, viewportBottom);
         int textY = viewportTop - Mth.floor(scrollY);
         textY = drawSmallWrapped(gg, ability.description(), x + 4, textY, w - 8, 0xE2E2E2) + 3;
-        textY = drawSmallWrapped(gg, "Cooldown: " + formatSeconds(AbilityScaling.cooldownTicks(ability.id(), Math.max(1, displayLevel), skills)), x + 4, textY, w - 8, 0xF0D15C) + 3;
-        drawSmallWrapped(gg, "Scaling: " + AbilityScaling.summary(ability.id(), Math.max(1, displayLevel), skills), x + 4, textY, w - 8, 0xA6D9FF);
+        int scaledWidth = Math.max(1, Mth.floor((w - 8) / SMALL_TEXT_SCALE));
+        drawAbilityStatLine(gg, x + 4, textY, scaledWidth, ability.id(), Math.max(1, displayLevel), skills);
         gg.disableScissor();
 
         if (keyHovered) {
@@ -217,9 +217,37 @@ public final class AbilityDetailsPanel extends AbstractWidget {
     private int measureContentHeight(AbilityDefinition ability, int level, PlayerSkills skills) {
         int scaledWidth = Math.max(1, Mth.floor((width - 8) / SMALL_TEXT_SCALE));
         int lines = mc.font.split(Component.literal(ability.description()), scaledWidth).size();
-        lines += mc.font.split(Component.literal("Cooldown: " + formatSeconds(AbilityScaling.cooldownTicks(ability.id(), level, skills))), scaledWidth).size();
-        lines += mc.font.split(Component.literal("Scaling: " + AbilityScaling.summary(ability.id(), level, skills)), scaledWidth).size();
+        lines += mc.font.split(Component.literal(abilityStatText(ability.id(), level, skills)), scaledWidth).size();
         return lines * SMALL_LINE_STEP;
+    }
+
+    private void drawAbilityStatLine(GuiGraphics gg, int x, int y, int scaledWidth, AbilityId id, int level, PlayerSkills skills) {
+        String cooldown = "Cooldown " + formatSeconds(AbilityScaling.cooldownTicks(id, level, skills));
+        String duration = "Duration " + formatSeconds(AbilityScaling.durationTicks(id, level, 1.0D));
+        String dps = "DPS " + formatDps(AbilityScaling.damage(id, level, 1.0D), AbilityScaling.durationTicks(id, level, 1.0D));
+        String sep = " | ";
+
+        gg.pose().pushPose();
+        gg.pose().translate(x, y, 0.0F);
+        gg.pose().scale(SMALL_TEXT_SCALE, SMALL_TEXT_SCALE, 1.0F);
+        int xx = 0;
+        gg.drawString(mc.font, cooldown, xx, 0, 0xF0D15C, false);
+        xx += mc.font.width(cooldown);
+        gg.drawString(mc.font, sep, xx, 0, 0xD0D0D0, false);
+        xx += mc.font.width(sep);
+        gg.drawString(mc.font, duration, xx, 0, 0x6AB2FF, false);
+        xx += mc.font.width(duration);
+        gg.drawString(mc.font, sep, xx, 0, 0xD0D0D0, false);
+        xx += mc.font.width(sep);
+        gg.drawString(mc.font, dps, xx, 0, 0xFF6A6A, false);
+        gg.pose().popPose();
+    }
+
+    private String abilityStatText(AbilityId id, int level, PlayerSkills skills) {
+        String cooldown = "Cooldown " + formatSeconds(AbilityScaling.cooldownTicks(id, level, skills));
+        String duration = "Duration " + formatSeconds(AbilityScaling.durationTicks(id, level, 1.0D));
+        String dps = "DPS " + formatDps(AbilityScaling.damage(id, level, 1.0D), AbilityScaling.durationTicks(id, level, 1.0D));
+        return cooldown + " | " + duration + " | " + dps;
     }
 
     private int drawSmallWrapped(GuiGraphics gg, String text, int x, int y, int width, int color) {
@@ -246,6 +274,12 @@ public final class AbilityDetailsPanel extends AbstractWidget {
 
     private static String formatSeconds(int ticks) {
         return String.format(java.util.Locale.ROOT, "%.1fs", ticks / 20.0D);
+    }
+
+    private static String formatDps(float damage, int durationTicks) {
+        double seconds = Math.max(0.05D, durationTicks / 20.0D);
+        double dps = damage / seconds;
+        return String.format(java.util.Locale.ROOT, "%.1fhp", dps);
     }
 
     private static String bindLabel(AbilityId id) {

@@ -26,7 +26,8 @@ import java.util.Map;
 public final class AbilityHudOverlay {
     private static final int SLOT_SIZE = 20;
     private static final int SLOT_STEP = 22;
-    private static final int GRID_COLUMNS = 5;
+    private static final int GRID_COLUMNS = 4;
+    private static final int GRID_ROWS = 2;
     private static final long FAIL_FLASH_MS = 350L;
     private static final Map<AbilityId, FailureState> FAILURES = new EnumMap<>(AbilityId.class);
 
@@ -54,13 +55,14 @@ public final class AbilityHudOverlay {
         if (displayed.isEmpty()) return;
 
         int columns = showGrid ? Math.min(GRID_COLUMNS, displayed.size()) : displayed.size();
-        int rows = showGrid ? (int) Math.ceil(displayed.size() / (double) GRID_COLUMNS) : 1;
+        int rows = showGrid ? Math.min(GRID_ROWS, (int) Math.ceil(displayed.size() / (double) GRID_COLUMNS)) : 1;
         int contentWidth = SLOT_SIZE + (Math.max(0, columns - 1) * SLOT_STEP);
         int contentHeight = SLOT_SIZE + (Math.max(0, rows - 1) * SLOT_STEP);
         Origin origin = resolveOrigin(gg, contentWidth, contentHeight, AbilityConfig.hudPosition());
 
         if (showGrid) {
-            for (int i = 0; i < displayed.size(); i++) {
+            int max = Math.min(displayed.size(), GRID_COLUMNS * GRID_ROWS);
+            for (int i = 0; i < max; i++) {
                 int col = i % GRID_COLUMNS;
                 int row = i / GRID_COLUMNS;
                 drawAbility(gg, mc.font, origin.x + col * SLOT_STEP, origin.y + row * SLOT_STEP, displayed.get(i), abilities, skills, displayed.get(i) == AbilityKeybinds.altSelection());
@@ -76,23 +78,9 @@ public final class AbilityHudOverlay {
         if (abilities == null) return List.of();
         List<AbilityId> recent = new ArrayList<>(abilities.recentAbilities());
         if (!recent.isEmpty()) {
-            return List.copyOf(recent.subList(0, Math.min(3, recent.size())));
+            return List.copyOf(recent.subList(0, Math.min(4, recent.size())));
         }
-        List<AbilityId> selected = new ArrayList<>();
-        for (var element : net.revilodev.codex.abilities.AbilityElement.values()) {
-            AbilityId selectedId = abilities.selectedSpecialization(element);
-            if (selectedId != null && abilities.rank(selectedId.core()) > 0) {
-                selected.add(selectedId);
-            }
-        }
-        if (!selected.isEmpty()) {
-            return List.copyOf(selected);
-        }
-        return AbilityRegistry.all().stream()
-                .map(AbilityDefinition::id)
-                .filter(AbilityId::isSpecialization)
-                .filter(abilities::unlocked)
-                .toList();
+        return List.of();
     }
 
     private static Origin resolveOrigin(GuiGraphics gg, int contentWidth, int contentHeight, AbilityConfig.HudPosition position) {

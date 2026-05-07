@@ -141,7 +141,9 @@ public final class PlayerAbilities implements INBTSerializable<CompoundTag> {
     }
 
     public void markUsed(AbilityId id) {
-        if (id == null || !unlocked(id)) return;
+        if (id == null) return;
+        if (id.isSpecialization() && rank(id.core()) <= 0) return;
+        if (id.isCore() && !unlocked(id)) return;
         recent.remove(id);
         recent.add(0, id);
         while (recent.size() > RECENT_COUNT) {
@@ -225,7 +227,11 @@ public final class PlayerAbilities implements INBTSerializable<CompoundTag> {
         }
         for (int i = 0; i < RECENT_COUNT; i++) {
             AbilityId id = parseAbility(recentTag.getString("recent" + i));
-            if (id != null && unlocked(id) && !recent.contains(id)) {
+            boolean valid = id != null && (
+                    (id.isSpecialization() && rank(id.core()) > 0)
+                            || (id.isCore() && unlocked(id))
+            );
+            if (valid && !recent.contains(id)) {
                 recent.add(id);
             }
         }

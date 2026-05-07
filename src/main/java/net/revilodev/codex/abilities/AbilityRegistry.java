@@ -8,7 +8,7 @@ public final class AbilityRegistry {
     private static final List<AbilityDefinition> ALL;
     private static final List<AbilityId> DISPLAY_ORDER = List.of(
             AbilityId.FIRE, AbilityId.FIRE_BURST, AbilityId.FIRE_NOVA, AbilityId.FIRE_IMPLODE, AbilityId.FIRE_STORM,
-            AbilityId.ICE, AbilityId.ICE_BURST, AbilityId.ICE_NOVA, AbilityId.ICE_PIERCE, AbilityId.ICE_IMPLODE, AbilityId.ICE_GLACIER, AbilityId.ICE_STORM,
+            AbilityId.ICE, AbilityId.ICE_BURST, AbilityId.ICE_NOVA, AbilityId.ICE_PIERCE, AbilityId.ICE_IMPLODE, AbilityId.ICE_STORM,
             AbilityId.LIGHTNING, AbilityId.LIGHTNING_STRIKE, AbilityId.LIGHTNING_ZAP, AbilityId.LIGHTNING_NOVA, AbilityId.LIGHTNING_IMPLODE, AbilityId.LIGHTNING_STORM,
             AbilityId.POISON, AbilityId.POISON_BURST, AbilityId.POISON_NOVA, AbilityId.POISON_IMPLODE,
             AbilityId.FORCE, AbilityId.FORCE_AEGIS, AbilityId.FORCE_BURST, AbilityId.FORCE_RAMPAGE,

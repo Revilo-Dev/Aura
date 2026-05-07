@@ -1,6 +1,5 @@
 {
-  "item.codex.guide_book": "Guide Book",
-  "item.codex.skills_book": "Skill Book",
+  "item.codex.skills_book": "Codex Book",
   "attribute.name.codex.ability_power": "Ability Power",
   "enchantment.codex.ability_power": "Ability Power",
   "effect.codex.ability_power_boost": "Ability Power Boost",

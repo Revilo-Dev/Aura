@@ -94,7 +94,8 @@ public final class AbilityLogic {
 
     private static boolean windDash(ServerPlayer player, AbilityId id, int coreRank, double abilityPower) {
         Vec3 look = player.getLookAngle();
-        Vec3 horiz = new Vec3(look.x, 0.0D, look.z).normalize().scale(0.8D + coreRank * 0.16D);
+        double ap = powerScale(abilityPower);
+        Vec3 horiz = new Vec3(look.x, 0.0D, look.z).normalize().scale((0.8D + coreRank * 0.16D) * ap);
         player.push(horiz.x, 0.06D, horiz.z);
         player.hurtMarked = true;
         fx(player, ParticleTypes.CLOUD, SoundEvents.BREEZE_WIND_CHARGE_BURST.value());
@@ -103,8 +104,9 @@ public final class AbilityLogic {
 
     private static boolean windLeap(ServerPlayer player, AbilityId id, int coreRank, double abilityPower) {
         Vec3 look = player.getLookAngle();
-        Vec3 horiz = new Vec3(look.x, 0.0D, look.z).normalize().scale(0.6D + coreRank * 0.12D);
-        player.setDeltaMovement(horiz.x, 0.45D + coreRank * 0.04D, horiz.z);
+        double ap = powerScale(abilityPower);
+        Vec3 horiz = new Vec3(look.x, 0.0D, look.z).normalize().scale((0.6D + coreRank * 0.12D) * ap);
+        player.setDeltaMovement(horiz.x, (0.45D + coreRank * 0.04D) * ap, horiz.z);
         player.hurtMarked = true;
         fx(player, ParticleTypes.POOF, SoundEvents.GOAT_LONG_JUMP);
         return true;
@@ -113,8 +115,9 @@ public final class AbilityLogic {
     private static boolean windLunge(ServerPlayer player, AbilityId id, int coreRank, double abilityPower) {
         LivingEntity target = nearby(player, AbilityScaling.radius(id, coreRank, abilityPower) + 4.0D).stream().filter(e -> inFront(player, e)).findFirst().orElse(null);
         if (target == null) return false;
+        double ap = powerScale(abilityPower);
         Vec3 toward = target.position().subtract(player.position()).normalize();
-        player.setDeltaMovement(toward.x * 0.9D, 0.12D, toward.z * 0.9D);
+        player.setDeltaMovement(toward.x * 0.9D * ap, 0.12D * ap, toward.z * 0.9D * ap);
         player.hurtMarked = true;
         target.hurt(player.damageSources().playerAttack(player), AbilityScaling.damage(id, coreRank, abilityPower));
         fx(player, ParticleTypes.SWEEP_ATTACK, SoundEvents.PLAYER_ATTACK_KNOCKBACK);
@@ -122,7 +125,22 @@ public final class AbilityLogic {
     }
 
     private static boolean burst(ServerPlayer player, AbilityId id, int coreRank, double abilityPower) {
-        int projectiles = 1 + Math.max(0, coreRank);
+        if (id == AbilityId.FORCE_BURST) {
+            double radius = AbilityScaling.radius(id, coreRank, abilityPower) + 1.5D;
+            List<LivingEntity> targets = nearby(player, radius);
+            if (targets.isEmpty()) return false;
+            float damage = AbilityScaling.damage(id, coreRank, abilityPower) * 1.15F;
+            int duration = AbilityScaling.durationTicks(id, coreRank, abilityPower);
+            double ap = powerScale(abilityPower);
+            for (LivingEntity target : targets) {
+                applyElementHit(player, AbilityElement.FORCE, target, damage, duration);
+                pushAwayFrom(player, target, (1.05D + coreRank * 0.06D) * ap);
+            }
+            fx(player, ParticleTypes.EXPLOSION, SoundEvents.GENERIC_EXPLODE.value());
+            return true;
+        }
+
+        int projectiles = 1 + Math.max(0, coreRank * 2);
         double stepDeg = 15.0D;
         double half = (projectiles - 1) * 0.5D;
         Vec3 look = player.getLookAngle().normalize();
@@ -132,7 +150,7 @@ public final class AbilityLogic {
             double angle = (i - half) * stepDeg;
             Vec3 dir = rotateYaw(look, angle).normalize();
             BurstCubeProjectile projectile = new BurstCubeProjectile(player.level(), player, id.element(), damage, duration);
-            projectile.shoot(dir.x, dir.y, dir.z, 2.35F, 0.0F);
+            projectile.shoot(dir.x, dir.y, dir.z, 1.32F, 0.0F);
             player.level().addFreshEntity(projectile);
         }
         fx(player, ParticleTypes.SMOKE, SoundEvents.BLAZE_SHOOT);
@@ -154,9 +172,12 @@ public final class AbilityLogic {
     private static boolean implode(ServerPlayer player, AbilityId id, int coreRank, double abilityPower) {
         List<LivingEntity> targets = nearby(player, AbilityScaling.radius(id, coreRank, abilityPower) + 1.0D);
         if (targets.isEmpty()) return false;
+        float damageScale = id.element() == AbilityElement.FORCE ? 0.75F : 1.0F;
+        double pullStrength = id.element() == AbilityElement.FORCE ? (0.3D + coreRank * 0.03D) : (0.5D + coreRank * 0.05D);
+        pullStrength *= powerScale(abilityPower);
         for (LivingEntity target : targets) {
-            pullToward(player, target, 0.5D + coreRank * 0.05D);
-            applyElementHit(player, id.element(), target, AbilityScaling.damage(id, coreRank, abilityPower), AbilityScaling.durationTicks(id, coreRank, abilityPower));
+            pullToward(player, target, pullStrength);
+            applyElementHit(player, id.element(), target, AbilityScaling.damage(id, coreRank, abilityPower) * damageScale, AbilityScaling.durationTicks(id, coreRank, abilityPower));
             if (id == AbilityId.LIGHTNING_IMPLODE && player.level() instanceof ServerLevel level) strikeLightning(level, target.getX(), target.getY(), target.getZ());
         }
         fx(player, ParticleTypes.EXPLOSION, SoundEvents.GENERIC_EXPLODE.value());
@@ -166,7 +187,7 @@ public final class AbilityLogic {
     private static boolean storm(ServerPlayer player, AbilityId id, int coreRank, double abilityPower) {
         int duration = Math.max(60, AbilityScaling.durationTicks(id, coreRank, abilityPower));
         player.getData(AbilitiesAttachments.PLAYER_ABILITIES.get()).setActiveTicks(id, duration);
-        fx(player, ParticleTypes.CAMPFIRE_SIGNAL_SMOKE, SoundEvents.LIGHTNING_BOLT_THUNDER);
+        fx(player, particleForElement(id.element()), SoundEvents.LIGHTNING_BOLT_THUNDER);
         return true;
     }
 
@@ -224,10 +245,14 @@ public final class AbilityLogic {
         if (targets.isEmpty()) return false;
         float damage = AbilityScaling.damage(id, coreRank, abilityPower) * 0.5F;
         int duration = AbilityScaling.durationTicks(id, coreRank, abilityPower);
-        for (LivingEntity target : targets) {
+        if (player.level() instanceof ServerLevel level) {
+            level.playSound(null, player.blockPosition(), SoundEvents.LIGHTNING_BOLT_THUNDER, SoundSource.PLAYERS, 0.45F, 1.35F);
+        }
+        for (int i = 0; i < targets.size(); i++) {
+            LivingEntity target = targets.get(i);
             applyElementHit(player, AbilityElement.LIGHTNING, target, damage, duration);
             if (player.level() instanceof ServerLevel level) {
-                level.sendParticles(ParticleTypes.ELECTRIC_SPARK, target.getX(), target.getY() + 1.0D, target.getZ(), 20, 0.3D, 0.5D, 0.3D, 0.02D);
+                spawnSmallLightningParticles(level, target.position().add(0.0D, 1.8D, 0.0D), target.position().add(0.0D, 0.3D, 0.0D));
             }
         }
         fx(player, ParticleTypes.ELECTRIC_SPARK, SoundEvents.LIGHTNING_BOLT_IMPACT);
@@ -235,7 +260,7 @@ public final class AbilityLogic {
     }
 
     private static boolean aegis(ServerPlayer player, AbilityId id, int coreRank, double abilityPower) {
-        int charges = Math.max(1, coreRank);
+        int charges = Math.max(1, (int) Math.round(coreRank * powerScale(abilityPower)));
         player.getData(AbilitiesAttachments.PLAYER_ABILITIES.get()).setActiveTicks(id, charges);
         fx(player, ParticleTypes.TOTEM_OF_UNDYING, SoundEvents.SHIELD_BLOCK);
         return true;
@@ -294,6 +319,15 @@ public final class AbilityLogic {
         target.hurtMarked = true;
     }
 
+    private static void pushAwayFrom(LivingEntity anchor, LivingEntity target, double strength) {
+        Vec3 dir = target.position().subtract(anchor.position());
+        Vec3 horiz = new Vec3(dir.x, 0.0D, dir.z);
+        if (horiz.lengthSqr() < 1.0E-5D) return;
+        Vec3 impulse = horiz.normalize().scale(strength);
+        target.push(impulse.x, 0.12D, impulse.z);
+        target.hurtMarked = true;
+    }
+
     private static void fx(ServerPlayer player, ParticleOptions particle, SoundEvent sound) {
         if (player.level() instanceof ServerLevel level) {
             level.sendParticles(particle, player.getX(), player.getY() + 1.0D, player.getZ(), 16, 0.6D, 0.3D, 0.6D, 0.01D);
@@ -316,8 +350,8 @@ public final class AbilityLogic {
         int coreRank = Math.max(1, abilities.rank(id.core()));
         double abilityPower = CodexAttributes.abilityPower(player, id);
         int active = abilities.activeTicks(id);
-        Vec3 center = player.position().add(0.0D, 2.5D, 0.0D);
-        level.sendParticles(ParticleTypes.CLOUD, center.x, center.y, center.z, 10, 0.8D, 0.15D, 0.8D, 0.01D);
+        Vec3 center = player.position().add(0.0D, 4.2D, 0.0D);
+        level.sendParticles(ParticleTypes.CLOUD, center.x, center.y, center.z, 14, 0.9D, 0.18D, 0.9D, 0.01D);
 
         if (active % 10 != 0) return;
         double radius = AbilityScaling.radius(id, coreRank, abilityPower) + 2.5D;
@@ -325,11 +359,14 @@ public final class AbilityLogic {
         for (LivingEntity target : targets) {
             applyElementHit(player, id.element(), target, AbilityScaling.damage(id, coreRank, abilityPower) * 0.6F, AbilityScaling.durationTicks(id, coreRank, abilityPower));
             if (id.element() == AbilityElement.LIGHTNING) {
-                level.sendParticles(ParticleTypes.ELECTRIC_SPARK, target.getX(), target.getY() + 1.1D, target.getZ(), 20, 0.25D, 0.5D, 0.25D, 0.02D);
+                spawnSmallLightningParticles(level, center, target.position().add(0.0D, 0.2D, 0.0D));
+                if (active % 20 == 0) {
+                    strikeLightning(level, target.getX(), target.getY(), target.getZ());
+                }
             } else if (id.element() == AbilityElement.FIRE) {
-                level.sendParticles(ParticleTypes.FLAME, target.getX(), target.getY() + 1.1D, target.getZ(), 14, 0.2D, 0.3D, 0.2D, 0.01D);
+                spawnRainParticles(level, center, target.position().add(0.0D, 0.3D, 0.0D), ParticleTypes.FLAME);
             } else if (id.element() == AbilityElement.ICE) {
-                level.sendParticles(ParticleTypes.SNOWFLAKE, target.getX(), target.getY() + 1.1D, target.getZ(), 14, 0.2D, 0.3D, 0.2D, 0.01D);
+                spawnRainParticles(level, center, target.position().add(0.0D, 0.3D, 0.0D), ParticleTypes.SNOWFLAKE);
             }
         }
     }
@@ -406,10 +443,28 @@ public final class AbilityLogic {
         }
     }
 
+    private static void spawnRainParticles(ServerLevel level, Vec3 from, Vec3 to, ParticleOptions particle) {
+        for (int i = 0; i <= 8; i++) {
+            Vec3 p = from.lerp(to, i / 8.0D);
+            level.sendParticles(particle, p.x, p.y, p.z, 1, 0.02D, 0.02D, 0.02D, 0.0D);
+        }
+    }
+
+    private static void spawnSmallLightningParticles(ServerLevel level, Vec3 from, Vec3 to) {
+        for (int i = 0; i <= 10; i++) {
+            Vec3 p = from.lerp(to, i / 10.0D);
+            level.sendParticles(ParticleTypes.ELECTRIC_SPARK, p.x, p.y, p.z, 1, 0.04D, 0.04D, 0.04D, 0.0D);
+        }
+    }
+
     private static void strikeLightning(ServerLevel level, double x, double y, double z) {
         LightningBolt bolt = EntityType.LIGHTNING_BOLT.create(level);
         if (bolt == null) return;
         bolt.moveTo(x, y, z);
         level.addFreshEntity(bolt);
+    }
+
+    private static double powerScale(double abilityPower) {
+        return 0.85D + (Math.max(0.0D, abilityPower) * 0.15D);
     }
 }
