@@ -69,6 +69,7 @@ public final class StandaloneSkillsBookScreen extends Screen {
             abilityDetails.setAbility(def);
             abilityList.setSelected(def == null ? null : def.id());
         });
+        abilityList.setViewportTweaks(-5, 14);
         abilityList.setShowLocked(true);
         abilityList.setHeaderTextOffsetX(19);
         abilityDetails = new AbilityDetailsPanel(detailsX, detailsY + 3, detailsW, detailsH);

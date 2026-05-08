@@ -11,8 +11,10 @@ import net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 import net.neoforged.neoforge.network.registration.PayloadRegistrar;
 import net.revilodev.codex.CodexMod;
+import net.revilodev.codex.abilities.event.AbilitySwitchEvent;
 import net.revilodev.codex.abilities.logic.AbilityLogic;
 import net.revilodev.codex.abilities.logic.AbilitySyncEvents;
+import net.neoforged.neoforge.common.NeoForge;
 
 public final class AbilitiesNetwork {
     private static final String VERSION = "1";
@@ -53,12 +55,32 @@ public final class AbilitiesNetwork {
             boolean changed = switch (payload.action()) {
                 case 0 -> abilities.tryUpgrade(id);
                 case 1 -> abilities.tryDowngrade(id);
-                case 2 -> abilities.selectSpecialization(id);
+                case 2 -> trySwitchSpecialization(player, abilities, id);
                 default -> false;
             };
             if (!changed) return;
             AbilitySyncEvents.markDirty(player);
         });
+    }
+
+    private static boolean trySwitchSpecialization(ServerPlayer player, PlayerAbilities abilities, AbilityId target) {
+        if (player == null || abilities == null || target == null || !target.isSpecialization()) return false;
+        if (abilities.rank(target.core()) <= 0) return false;
+
+        AbilityId current = abilities.selectedSpecialization(target.element());
+        if (current == target) return false;
+        if (abilities.cooldownTicks(target) > 0) return false;
+        if (current != null && abilities.cooldownTicks(current) > 0) return false;
+
+        AbilitySwitchEvent.Pre pre = new AbilitySwitchEvent.Pre(player, target.element(), current, target);
+        if (NeoForge.EVENT_BUS.post(pre).isCanceled()) return false;
+
+        boolean changed = abilities.selectSpecialization(target);
+        if (changed) {
+            abilities.markSpecializationSwitched(current, target);
+            NeoForge.EVENT_BUS.post(new AbilitySwitchEvent.Post(player, target.element(), current, target));
+        }
+        return changed;
     }
 
     private static void handleUse(AbilityUsePayload payload, IPayloadContext ctx) {

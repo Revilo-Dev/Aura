@@ -4,6 +4,7 @@ import net.minecraft.core.Holder;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.effect.MobEffect;
+import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.ai.attributes.AttributeModifier;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.neoforge.registries.DeferredRegister;
@@ -21,6 +22,24 @@ public final class CodexMobEffects {
                                 case 0 -> 0.25D;
                                 case 1 -> 0.50D;
                                 default -> 1.0D;
+                            }));
+    public static final Holder<MobEffect> RAMPAGING = REGISTER.register("rampaging", () ->
+            new RampagingEffect()
+                    .addAttributeModifier(Attributes.ATTACK_DAMAGE,
+                            ResourceLocation.fromNamespaceAndPath(CodexMod.MOD_ID, "rampaging_attack_damage"),
+                            AttributeModifier.Operation.ADD_VALUE,
+                            amplifier -> {
+                                int coreRank = amplifier + 1;
+                                int strengthAmp = Math.min(4, coreRank / 2);
+                                return 3.0D * (strengthAmp + 1);
+                            })
+                    .addAttributeModifier(Attributes.MOVEMENT_SPEED,
+                            ResourceLocation.fromNamespaceAndPath(CodexMod.MOD_ID, "rampaging_move_speed"),
+                            AttributeModifier.Operation.ADD_MULTIPLIED_TOTAL,
+                            amplifier -> {
+                                int coreRank = amplifier + 1;
+                                int speedAmp = Math.min(2, coreRank / 3);
+                                return 0.2D * (speedAmp + 1);
                             }));
 
     private CodexMobEffects() {}

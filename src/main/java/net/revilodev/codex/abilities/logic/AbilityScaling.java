@@ -10,6 +10,9 @@ public final class AbilityScaling {
     private AbilityScaling() {}
 
     public static int cooldownTicks(AbilityId id, int rank, PlayerSkills skills) {
+        if (id == AbilityId.LIGHTNING_STORM) {
+            return 1200;
+        }
         double out = AbilityConfig.configuredCooldown(id);
         out -= (Math.max(1, rank) - 1) * 8.0D;
         out *= AbilityConfig.cooldownMultiplier();

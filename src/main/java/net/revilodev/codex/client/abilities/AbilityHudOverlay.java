@@ -10,6 +10,7 @@ import net.neoforged.neoforge.client.event.RenderGuiEvent;
 import net.revilodev.codex.abilities.AbilitiesAttachments;
 import net.revilodev.codex.abilities.AbilityConfig;
 import net.revilodev.codex.abilities.AbilityDefinition;
+import net.revilodev.codex.abilities.AbilityElement;
 import net.revilodev.codex.abilities.AbilityId;
 import net.revilodev.codex.abilities.AbilityRegistry;
 import net.revilodev.codex.abilities.PlayerAbilities;
@@ -79,6 +80,16 @@ public final class AbilityHudOverlay {
         List<AbilityId> recent = new ArrayList<>(abilities.recentAbilities());
         if (!recent.isEmpty()) {
             return List.copyOf(recent.subList(0, Math.min(4, recent.size())));
+        }
+        List<AbilityId> selected = new ArrayList<>();
+        for (AbilityElement element : AbilityElement.values()) {
+            AbilityId id = abilities.selectedSpecialization(element);
+            if (id != null && id.isSpecialization() && abilities.rank(id.core()) > 0) {
+                selected.add(id);
+            }
+        }
+        if (!selected.isEmpty()) {
+            return List.copyOf(selected.subList(0, Math.min(4, selected.size())));
         }
         return List.of();
     }

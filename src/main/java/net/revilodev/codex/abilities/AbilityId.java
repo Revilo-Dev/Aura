@@ -8,7 +8,7 @@ public enum AbilityId {
     FIRE_NOVA("Fire Nova", "Radius of fire around the player.", AbilityElement.FIRE, AbilitySpecialization.NOVA, AbilityNodeType.SPECIALIZATION, FIRE, SkillId.STRENGTH, 1, 200, "fire_nova"),
     FIRE_BURST("Fire Burst", "Burst of fire projectiles.", AbilityElement.FIRE, AbilitySpecialization.BURST, AbilityNodeType.SPECIALIZATION, FIRE_NOVA, SkillId.STRENGTH, 1, 120, "fire_burst"),
     FIRE_IMPLODE("Fire Implode", "Explosion that sets enemies on fire.", AbilityElement.FIRE, AbilitySpecialization.IMPLODE, AbilityNodeType.SPECIALIZATION, FIRE_BURST, SkillId.STRENGTH, 1, 240, "fire_implode"),
-    FIRE_STORM("Fire Storm", "Rains fire from the sky.", AbilityElement.FIRE, AbilitySpecialization.STORM, AbilityNodeType.SPECIALIZATION, FIRE_IMPLODE, SkillId.STRENGTH, 1, 420, "fire_storm"),
+    FIRE_STORM("Fire Storm", "Summons a storm cloud that rains fire on nearby enemies. +1 projectile per level, +1s duration, -2.5s cooldown, +0.5 DPS.", AbilityElement.FIRE, AbilitySpecialization.STORM, AbilityNodeType.SPECIALIZATION, FIRE_IMPLODE, SkillId.STRENGTH, 1, 600, "fire_storm"),
 
     ICE("Ice", "Mastery of ice abilities.", AbilityElement.ICE, null, AbilityNodeType.CORE, null, SkillId.RESISTANCE, 5, 0, "ice"),
     ICE_NOVA("Ice Nova", "Radius of slowness around the player.", AbilityElement.ICE, AbilitySpecialization.NOVA, AbilityNodeType.SPECIALIZATION, ICE, SkillId.RESISTANCE, 1, 200, "ice_nova"),
@@ -16,14 +16,14 @@ public enum AbilityId {
     ICE_IMPLODE("Ice Implode", "Explosion that slows enemies.", AbilityElement.ICE, AbilitySpecialization.IMPLODE, AbilityNodeType.SPECIALIZATION, ICE_BURST, SkillId.RESISTANCE, 1, 240, "ice_implode"),
     ICE_PIERCE("Ice Pierce", "Piercing bullet of ice.", AbilityElement.ICE, AbilitySpecialization.PIERCE, AbilityNodeType.SPECIALIZATION, ICE_IMPLODE, SkillId.RESISTANCE, 1, 180, "ice_pierce"),
     ICE_GLACIER("Ice Glacier", "Ice spikes erupt from the ground.", AbilityElement.ICE, AbilitySpecialization.GLACIER, AbilityNodeType.SPECIALIZATION, ICE_PIERCE, SkillId.RESISTANCE, 1, 360, "ice_glacier"),
-    ICE_STORM("Ice Storm", "Raining ice spikes.", AbilityElement.ICE, AbilitySpecialization.STORM, AbilityNodeType.SPECIALIZATION, ICE_PIERCE, SkillId.RESISTANCE, 1, 460, "ice_storm"),
+    ICE_STORM("Ice Storm", "Summons a storm cloud which rains ice spikes from the sky at enemies. +1 projectile per level, +1s duration, -2.5s cooldown, +0.5 DPS.", AbilityElement.ICE, AbilitySpecialization.STORM, AbilityNodeType.SPECIALIZATION, ICE_PIERCE, SkillId.RESISTANCE, 1, 700, "ice_storm"),
 
     LIGHTNING("Lightning", "Mastery of lightning abilities.", AbilityElement.LIGHTNING, null, AbilityNodeType.CORE, null, SkillId.AGILITY, 5, 0, "lightning"),
     LIGHTNING_NOVA("Lightning Nova", "Radius that strikes nearby mobs.", AbilityElement.LIGHTNING, AbilitySpecialization.NOVA, AbilityNodeType.SPECIALIZATION, LIGHTNING, SkillId.AGILITY, 1, 220, "lightning_nova"),
     LIGHTNING_ZAP("Lightning Zap", "Strike multiple enemies with weak lightning.", AbilityElement.LIGHTNING, AbilitySpecialization.ZAP, AbilityNodeType.SPECIALIZATION, LIGHTNING_NOVA, SkillId.AGILITY, 1, 180, "lightning_zap"),
     LIGHTNING_IMPLODE("Lightning Implode", "Explosion that strikes enemies.", AbilityElement.LIGHTNING, AbilitySpecialization.IMPLODE, AbilityNodeType.SPECIALIZATION, LIGHTNING_ZAP, SkillId.AGILITY, 1, 260, "lightning_implode"),
     LIGHTNING_STRIKE("Lightning Strike", "Strike one enemy with lightning.", AbilityElement.LIGHTNING, AbilitySpecialization.STRIKE, AbilityNodeType.SPECIALIZATION, LIGHTNING_IMPLODE, SkillId.AGILITY, 1, 120, "lightning_strike"),
-    LIGHTNING_STORM("Lightning Storm", "Storm of many weak lightning bolts.", AbilityElement.LIGHTNING, AbilitySpecialization.STORM, AbilityNodeType.SPECIALIZATION, LIGHTNING_STRIKE, SkillId.AGILITY, 1, 420, "lightning_storm"),
+    LIGHTNING_STORM("Lightning Storm", "Summons a storm cloud that repeatedly strikes nearby enemies with lightning. +1 projectile per level, +1s duration, -2.5s cooldown, +0.5 DPS.", AbilityElement.LIGHTNING, AbilitySpecialization.STORM, AbilityNodeType.SPECIALIZATION, LIGHTNING_STRIKE, SkillId.AGILITY, 1, 1200, "lightning_storm"),
 
     POISON("Poison", "Mastery of poison abilities.", AbilityElement.POISON, null, AbilityNodeType.CORE, null, SkillId.LUCK, 5, 0, "poison"),
     POISON_NOVA("Poison Nova", "Radius circle of poison.", AbilityElement.POISON, AbilitySpecialization.NOVA, AbilityNodeType.SPECIALIZATION, POISON, SkillId.LUCK, 1, 200, "poison_nova"),
@@ -32,7 +32,7 @@ public enum AbilityId {
 
     FORCE("Force", "Mastery of force abilities.", AbilityElement.FORCE, null, AbilityNodeType.CORE, null, SkillId.RESISTANCE, 5, 0, "force"),
     FORCE_AEGIS("Aegis", "Protects player for hits, then knocks enemies back.", AbilityElement.FORCE, AbilitySpecialization.AEGIS, AbilityNodeType.SPECIALIZATION, FORCE, SkillId.RESISTANCE, 1, 260, "aegis"),
-    FORCE_BURST("Implode", "Knocks back enemies in radius.", AbilityElement.FORCE, AbilitySpecialization.BURST, AbilityNodeType.SPECIALIZATION, FORCE_AEGIS, SkillId.RESISTANCE, 1, 180, "blast"),
+    FORCE_BURST("Implode", "Creates a force explosion around you that damages and knocks back enemies. Slightly higher damage than standard implodes; does not move the caster.", AbilityElement.FORCE, AbilitySpecialization.BURST, AbilityNodeType.SPECIALIZATION, FORCE_AEGIS, SkillId.RESISTANCE, 1, 180, "blast"),
     FORCE_RAMPAGE("Rampage", "Existing rampage behavior.", AbilityElement.FORCE, AbilitySpecialization.RAMPAGE, AbilityNodeType.SPECIALIZATION, FORCE_BURST, SkillId.RESISTANCE, 1, 300, "rampage"),
 
     MAGIC("Magic", "Mastery of support magic.", AbilityElement.MAGIC, null, AbilityNodeType.CORE, null, SkillId.VITALITY, 5, 0, "magic"),

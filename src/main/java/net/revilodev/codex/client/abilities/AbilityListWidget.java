@@ -7,6 +7,7 @@ import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.narration.NarrationElementOutput;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.resources.ResourceLocation;
 import net.neoforged.neoforge.network.PacketDistributor;
 import net.neoforged.api.distmarker.Dist;
@@ -18,6 +19,7 @@ import net.revilodev.codex.abilities.AbilityElement;
 import net.revilodev.codex.abilities.AbilityDefinition;
 import net.revilodev.codex.abilities.AbilityId;
 import net.revilodev.codex.abilities.AbilityRegistry;
+import net.revilodev.codex.abilities.AbilitySpecialization;
 import net.revilodev.codex.abilities.PlayerAbilities;
 import net.revilodev.codex.abilities.logic.AbilityScaling;
 import net.revilodev.codex.skills.PlayerSkills;
@@ -243,9 +245,7 @@ public final class AbilityListWidget extends AbstractWidget {
             gg.blit(def.iconTexture(), x + 3, y + 3, 0, 0, 16, 16, 16, 16);
             if (hovered) {
                 int lvl = abilities.rank(def.id().core());
-                String cooldownText = "Cooldown " + formatSeconds(AbilityScaling.cooldownTicks(def.id(), Math.max(1, lvl), skills));
-                String durationText = "Duration " + formatSeconds(AbilityScaling.durationTicks(def.id(), Math.max(1, lvl), 1.0D));
-                String dpsText = "DPS " + formatDps(AbilityScaling.damage(def.id(), Math.max(1, lvl), 1.0D), AbilityScaling.durationTicks(def.id(), Math.max(1, lvl), 1.0D));
+                List<StatPart> stats = statParts(def.id(), Math.max(1, lvl), skills);
                 hoveredTooltip = null;
                 gg.disableScissor();
                 gg.renderTooltip(mc.font, List.of(
@@ -254,13 +254,13 @@ public final class AbilityListWidget extends AbstractWidget {
                                 .append(Component.literal(" "))
                                 .append(Component.literal("Lv " + lvl).withStyle(ChatFormatting.DARK_PURPLE)),
                         Component.literal(def.description()),
-                        Component.empty()
-                                .append(Component.literal(cooldownText).withStyle(ChatFormatting.YELLOW))
-                                .append(Component.literal(" | ").withStyle(ChatFormatting.GRAY))
-                                .append(Component.literal(durationText).withStyle(ChatFormatting.BLUE))
-                                .append(Component.literal(" | ").withStyle(ChatFormatting.GRAY))
-                                .append(Component.literal(dpsText).withStyle(ChatFormatting.RED)),
-                        Component.literal("Click to select").withStyle(ChatFormatting.GREEN)
+                        styledStatLine(stats),
+                        Component.literal(def.type() == net.revilodev.codex.abilities.AbilityNodeType.CORE
+                                ? "Left Click to upgrade"
+                                : "Click to select").withStyle(ChatFormatting.GREEN),
+                        Component.literal(def.type() == net.revilodev.codex.abilities.AbilityNodeType.CORE
+                                ? "Right Click to downgrade"
+                                : "").withStyle(ChatFormatting.RED)
                 ), java.util.Optional.empty(), mouseX, mouseY - 4);
                 gg.enableScissor(viewportX, viewportY, viewportX + viewportW, viewportY + viewportH);
             }
@@ -270,16 +270,25 @@ public final class AbilityListWidget extends AbstractWidget {
 
     @Override
     public boolean mouseClicked(double mx, double my, int button) {
-        if (!visible || !active || button != 0 || !isMouseOver(mx, my)) return false;
+        if (!visible || !active || (button != 0 && button != 1) || !isMouseOver(mx, my) || mc.player == null) return false;
         Node node = nodeAt(mx, my);
         if (node == null) {
             selected = null;
             if (onClick != null) onClick.accept(null);
             return true;
         }
+        PlayerAbilities abilities = mc.player.getData(AbilitiesAttachments.PLAYER_ABILITIES.get());
         selected = node.def.id();
         if (onClick != null) onClick.accept(node.def);
-        if (node.def.type() == net.revilodev.codex.abilities.AbilityNodeType.SPECIALIZATION) {
+        boolean isCore = node.def.type() == net.revilodev.codex.abilities.AbilityNodeType.CORE;
+        boolean isSpecialization = node.def.type() == net.revilodev.codex.abilities.AbilityNodeType.SPECIALIZATION;
+        if (isCore) {
+            if (button == 0) {
+                PacketDistributor.sendToServer(new AbilitiesNetwork.AbilityActionPayload(0, node.def.id().ordinal()));
+            } else if (button == 1) {
+                PacketDistributor.sendToServer(new AbilitiesNetwork.AbilityActionPayload(1, node.def.id().ordinal()));
+            }
+        } else if (isSpecialization && button == 0) {
             PacketDistributor.sendToServer(new AbilitiesNetwork.AbilityActionPayload(2, node.def.id().ordinal()));
         }
         return true;
@@ -347,4 +356,74 @@ public final class AbilityListWidget extends AbstractWidget {
         double seconds = Math.max(0.05D, durationTicks / 20.0D);
         return String.format(java.util.Locale.ROOT, "%.1fhp", damage / seconds);
     }
+
+    private List<StatPart> statParts(AbilityId id, int level, PlayerSkills skills) {
+        List<StatPart> out = new ArrayList<>();
+        out.add(new StatPart("Cooldown " + formatSeconds(AbilityScaling.cooldownTicks(id, level, skills)), ChatFormatting.YELLOW));
+
+        String durationText = "Duration " + formatSeconds(AbilityScaling.durationTicks(id, level, 1.0D));
+        String thirdText = "DPS " + formatDps(AbilityScaling.damage(id, level, 1.0D), AbilityScaling.durationTicks(id, level, 1.0D));
+
+        if (id == AbilityId.WIND_DASH) {
+            durationText = null;
+            thirdText = "Distance " + fmt(1.0D + (level * 0.2D));
+        } else if (id == AbilityId.WIND_LEAP) {
+            durationText = null;
+            thirdText = "Height " + fmt(0.55D + (level * 0.05D));
+        } else if (id == AbilityId.WIND_LUNGE) {
+            durationText = "Distance " + fmt(AbilityScaling.radius(id, level, 1.0D) + 4.0D);
+            thirdText = "Damage " + fmt(AbilityScaling.damage(id, level, 1.0D) * 1.25D);
+        } else if (id == AbilityId.MAGIC_HEAL) {
+            durationText = null;
+            thirdText = "Health " + fmt(AbilityScaling.damage(id, level, 1.0D) * 0.6D);
+        } else if (id == AbilityId.MAGIC_CLEANSE) {
+            durationText = null;
+        } else if (id == AbilityId.FORCE_RAMPAGE) {
+            int coreRank = Math.max(1, level);
+            int strengthAmp = Math.min(4, coreRank / 2);
+            thirdText = "Damage +" + fmt(3.0D * (strengthAmp + 1));
+        } else if (id == AbilityId.FORCE_AEGIS) {
+            thirdText = "Dmg Avoids " + Math.max(1, (int) Math.round(level));
+        } else if (id.specialization() == AbilitySpecialization.NOVA) {
+            thirdText = "Radius " + fmt(AbilityScaling.radius(id, level, 1.0D) + 1.5D);
+        }
+
+        if (id.specialization() == AbilitySpecialization.IMPLODE) {
+            durationText = "Radius " + fmt(AbilityScaling.radius(id, level, 1.0D) + 1.0D);
+        } else if (id.specialization() == AbilitySpecialization.BURST) {
+            if (id == AbilityId.FIRE_BURST || id == AbilityId.ICE_BURST || id == AbilityId.POISON_BURST) {
+                durationText = "Projectiles " + (1 + Math.max(0, level * 2));
+            } else if (id == AbilityId.FORCE_BURST) {
+                durationText = "Projectiles 1";
+            }
+        }
+
+        if (durationText != null && !durationText.isEmpty()) {
+            out.add(new StatPart(durationText, ChatFormatting.BLUE));
+        }
+        if (thirdText != null && !thirdText.isEmpty()) {
+            out.add(new StatPart(thirdText, ChatFormatting.RED));
+        }
+        return out;
+    }
+
+    private static Component styledStatLine(List<StatPart> stats) {
+        MutableComponent line = Component.empty();
+        for (int i = 0; i < stats.size(); i++) {
+            StatPart stat = stats.get(i);
+            line = line.append(Component.literal(stat.text()).withStyle(stat.style()));
+            if (i < stats.size() - 1) {
+                line = line.append(Component.literal(" | ").withStyle(ChatFormatting.GRAY));
+            }
+        }
+        return line;
+    }
+
+    private static String fmt(double value) {
+        String out = String.format(java.util.Locale.ROOT, "%.2f", value);
+        while (out.contains(".") && (out.endsWith("0") || out.endsWith("."))) out = out.substring(0, out.length() - 1);
+        return out;
+    }
+
+    private record StatPart(String text, ChatFormatting style) {}
 }

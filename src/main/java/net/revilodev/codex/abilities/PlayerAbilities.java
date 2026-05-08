@@ -151,6 +151,15 @@ public final class PlayerAbilities implements INBTSerializable<CompoundTag> {
         }
     }
 
+    public void markSpecializationSwitched(AbilityId from, AbilityId to) {
+        if (to == null || !to.isSpecialization() || rank(to.core()) <= 0) return;
+        recent.removeIf(id -> id != null && id.isSpecialization() && id.element() == to.element());
+        recent.add(0, to);
+        while (recent.size() > RECENT_COUNT) {
+            recent.remove(recent.size() - 1);
+        }
+    }
+
     public List<AbilityId> recentAbilities() {
         return List.copyOf(recent);
     }

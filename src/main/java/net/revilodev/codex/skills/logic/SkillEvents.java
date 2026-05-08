@@ -7,6 +7,7 @@ import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
+import net.minecraft.world.entity.decoration.ArmorStand;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.projectile.AbstractArrow;
 import net.minecraft.world.item.ItemStack;
@@ -106,11 +107,13 @@ public final class SkillEvents {
                 double leachAmount = SkillBalance.lifeLeachAmount();
                 if (attacker.getRandom().nextDouble() < leachChance) {
                     LivingEntity target = event.getEntity();
-                    float stolen = (float) (target.getMaxHealth() * leachAmount);
-                    if (stolen > 0.0F) {
-                        amt += stolen;
-                        attacker.heal(stolen);
-                        spawnLifeLeachParticles(attacker, target);
+                    if (target instanceof Mob && !(target instanceof ArmorStand) && target.getMaxHealth() > 0.0F) {
+                        float stolen = (float) (target.getMaxHealth() * leachAmount);
+                        if (stolen > 0.0F) {
+                            amt += stolen;
+                            attacker.heal(stolen);
+                            spawnLifeLeachParticles(attacker, target);
+                        }
                     }
                 }
             }

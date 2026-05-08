@@ -17,6 +17,7 @@ import net.revilodev.codex.abilities.AbilitiesAttachments;
 import net.revilodev.codex.abilities.AbilitiesNetwork;
 import net.revilodev.codex.abilities.AbilityDefinition;
 import net.revilodev.codex.abilities.AbilityId;
+import net.revilodev.codex.abilities.AbilitySpecialization;
 import net.revilodev.codex.abilities.PlayerAbilities;
 import net.revilodev.codex.abilities.logic.AbilityScaling;
 import net.revilodev.codex.skills.PlayerSkills;
@@ -222,32 +223,76 @@ public final class AbilityDetailsPanel extends AbstractWidget {
     }
 
     private void drawAbilityStatLine(GuiGraphics gg, int x, int y, int scaledWidth, AbilityId id, int level, PlayerSkills skills) {
-        String cooldown = "Cooldown " + formatSeconds(AbilityScaling.cooldownTicks(id, level, skills));
-        String duration = "Duration " + formatSeconds(AbilityScaling.durationTicks(id, level, 1.0D));
-        String dps = "DPS " + formatDps(AbilityScaling.damage(id, level, 1.0D), AbilityScaling.durationTicks(id, level, 1.0D));
-        String sep = " | ";
-
+        List<StatPart> parts = statParts(id, level, skills);
         gg.pose().pushPose();
         gg.pose().translate(x, y, 0.0F);
         gg.pose().scale(SMALL_TEXT_SCALE, SMALL_TEXT_SCALE, 1.0F);
         int xx = 0;
-        gg.drawString(mc.font, cooldown, xx, 0, 0xF0D15C, false);
-        xx += mc.font.width(cooldown);
-        gg.drawString(mc.font, sep, xx, 0, 0xD0D0D0, false);
-        xx += mc.font.width(sep);
-        gg.drawString(mc.font, duration, xx, 0, 0x6AB2FF, false);
-        xx += mc.font.width(duration);
-        gg.drawString(mc.font, sep, xx, 0, 0xD0D0D0, false);
-        xx += mc.font.width(sep);
-        gg.drawString(mc.font, dps, xx, 0, 0xFF6A6A, false);
+        for (int i = 0; i < parts.size(); i++) {
+            StatPart part = parts.get(i);
+            gg.drawString(mc.font, part.text(), xx, 0, part.color(), false);
+            xx += mc.font.width(part.text());
+            if (i < parts.size() - 1) {
+                gg.drawString(mc.font, " | ", xx, 0, 0xD0D0D0, false);
+                xx += mc.font.width(" | ");
+            }
+        }
         gg.pose().popPose();
     }
 
     private String abilityStatText(AbilityId id, int level, PlayerSkills skills) {
-        String cooldown = "Cooldown " + formatSeconds(AbilityScaling.cooldownTicks(id, level, skills));
-        String duration = "Duration " + formatSeconds(AbilityScaling.durationTicks(id, level, 1.0D));
-        String dps = "DPS " + formatDps(AbilityScaling.damage(id, level, 1.0D), AbilityScaling.durationTicks(id, level, 1.0D));
-        return cooldown + " | " + duration + " | " + dps;
+        List<StatPart> parts = statParts(id, level, skills);
+        return parts.stream().map(StatPart::text).reduce((a, b) -> a + " | " + b).orElse("");
+    }
+
+    private List<StatPart> statParts(AbilityId id, int level, PlayerSkills skills) {
+        List<StatPart> out = new ArrayList<>();
+        out.add(new StatPart("Cooldown " + formatSeconds(AbilityScaling.cooldownTicks(id, level, skills)), 0xF0D15C));
+
+        String durationText = "Duration " + formatSeconds(AbilityScaling.durationTicks(id, level, 1.0D));
+        String thirdText = "DPS " + formatDps(AbilityScaling.damage(id, level, 1.0D), AbilityScaling.durationTicks(id, level, 1.0D));
+
+        if (id == AbilityId.WIND_DASH) {
+            durationText = null;
+            thirdText = "Distance " + fmt(1.0D + (level * 0.2D));
+        } else if (id == AbilityId.WIND_LEAP) {
+            durationText = null;
+            thirdText = "Height " + fmt(0.55D + (level * 0.05D));
+        } else if (id == AbilityId.WIND_LUNGE) {
+            durationText = "Distance " + fmt(AbilityScaling.radius(id, level, 1.0D) + 4.0D);
+            thirdText = "Damage " + fmt(AbilityScaling.damage(id, level, 1.0D) * 1.25D);
+        } else if (id == AbilityId.MAGIC_HEAL) {
+            durationText = null;
+            thirdText = "Health " + fmt(AbilityScaling.damage(id, level, 1.0D) * 0.6D);
+        } else if (id == AbilityId.MAGIC_CLEANSE) {
+            durationText = null;
+        } else if (id == AbilityId.FORCE_RAMPAGE) {
+            int coreRank = Math.max(1, level);
+            int strengthAmp = Math.min(4, coreRank / 2);
+            thirdText = "Damage +" + fmt(3.0D * (strengthAmp + 1));
+        } else if (id == AbilityId.FORCE_AEGIS) {
+            thirdText = "Dmg Avoids " + Math.max(1, (int) Math.round(level));
+        } else if (id.specialization() == AbilitySpecialization.NOVA) {
+            thirdText = "Radius " + fmt(AbilityScaling.radius(id, level, 1.0D) + 1.5D);
+        }
+
+        if (id.specialization() == AbilitySpecialization.IMPLODE) {
+            durationText = "Radius " + fmt(AbilityScaling.radius(id, level, 1.0D) + 1.0D);
+        } else if (id.specialization() == AbilitySpecialization.BURST) {
+            if (id == AbilityId.FIRE_BURST || id == AbilityId.ICE_BURST || id == AbilityId.POISON_BURST) {
+                durationText = "Projectiles " + (1 + Math.max(0, level * 2));
+            } else if (id == AbilityId.FORCE_BURST) {
+                durationText = "Projectiles 1";
+            }
+        }
+
+        if (durationText != null && !durationText.isEmpty()) {
+            out.add(new StatPart(durationText, 0x6AB2FF));
+        }
+        if (thirdText != null && !thirdText.isEmpty()) {
+            out.add(new StatPart(thirdText, 0xFF6A6A));
+        }
+        return out;
     }
 
     private int drawSmallWrapped(GuiGraphics gg, String text, int x, int y, int width, int color) {
@@ -282,6 +327,12 @@ public final class AbilityDetailsPanel extends AbstractWidget {
         return String.format(java.util.Locale.ROOT, "%.1fhp", dps);
     }
 
+    private static String fmt(double value) {
+        String out = String.format(java.util.Locale.ROOT, "%.2f", value);
+        while (out.contains(".") && (out.endsWith("0") || out.endsWith("."))) out = out.substring(0, out.length() - 1);
+        return out;
+    }
+
     private static String bindLabel(AbilityId id) {
         return AbilityKeybinds.keyName(id);
     }
@@ -301,6 +352,8 @@ public final class AbilityDetailsPanel extends AbstractWidget {
         if (lines.isEmpty()) return;
         gg.renderTooltip(mc.font, lines, java.util.Optional.empty(), mouseX, mouseY);
     }
+
+    private record StatPart(String text, int color) {}
 
     private final class UpgradeButton extends AbstractButton {
         UpgradeButton(int x, int y) { super(x, y, 58, 18, Component.literal("Upgrade")); }

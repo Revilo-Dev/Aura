@@ -87,7 +87,7 @@ public final class SkillsPanelClient {
         });
         st.abilityList.setHeaderVisible(false);
         st.abilityList.setShowLocked(true);
-        st.abilityList.setViewportTweaks(-5, 11);
+        st.abilityList.setViewportTweaks(-5, 14);
         st.abilityDetails = new AbilityDetailsPanel(0, 0, AbilityListWidget.gridWidth(), PANEL_H / 3);
         st.skillsTab = new PanelTabButton(0, 0, PanelTab.SKILLS, () -> setTab(st, PanelTab.SKILLS));
         st.abilitiesTab = new PanelTabButton(0, 0, PanelTab.ABILITIES, () -> setTab(st, PanelTab.ABILITIES));
