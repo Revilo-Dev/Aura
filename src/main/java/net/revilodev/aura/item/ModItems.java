@@ -1,0 +1,31 @@
+package net.revilodev.aura.item;
+
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.CreativeModeTabs;
+import net.neoforged.bus.api.IEventBus;
+import net.neoforged.neoforge.event.BuildCreativeModeTabContentsEvent;
+import net.neoforged.neoforge.registries.DeferredRegister;
+import net.neoforged.neoforge.registries.DeferredItem;
+import net.revilodev.aura.CodexMod;
+
+public final class ModItems {
+    private ModItems() {}
+
+    public static final DeferredRegister.Items ITEMS = DeferredRegister.createItems(CodexMod.MOD_ID);
+
+    public static final DeferredItem<Item> SKILLS_BOOK =
+            ITEMS.registerItem("skills_book", SkillsBookItem::new, new Item.Properties().stacksTo(1));
+
+    public static void register(IEventBus bus) {
+        ITEMS.register(bus);
+        bus.addListener(ModItems::addToCreativeTabs);
+    }
+
+    private static void addToCreativeTabs(BuildCreativeModeTabContentsEvent event) {
+        if (event.getTabKey() == CreativeModeTabs.INGREDIENTS
+                || event.getTabKey() == CreativeModeTabs.TOOLS_AND_UTILITIES
+                || event.getTabKey() == CreativeModeTabs.SEARCH) {
+            event.accept(SKILLS_BOOK.get());
+        }
+    }
+}

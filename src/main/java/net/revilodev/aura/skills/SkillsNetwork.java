@@ -1,0 +1,189 @@
+// src/main/java/net/revilodev/codex/skills/SkillsNetwork.java
+package net.revilodev.aura.skills;
+
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.network.RegistryFriendlyByteBuf;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.level.ServerPlayer;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.api.distmarker.OnlyIn;
+import net.neoforged.neoforge.network.PacketDistributor;
+import net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent;
+import net.neoforged.neoforge.network.handling.IPayloadContext;
+import net.neoforged.neoforge.network.registration.PayloadRegistrar;
+import net.revilodev.aura.CodexMod;
+import net.revilodev.aura.client.AuraClientConfig;
+import net.revilodev.aura.client.toast.LevelUpToast;
+import net.revilodev.aura.skills.logic.SkillLogic;
+
+public final class SkillsNetwork {
+    private SkillsNetwork() {}
+
+    private static final String VERSION = "1";
+    private static boolean REGISTERED = false;
+
+    public static void onRegisterPayloadHandlers(RegisterPayloadHandlersEvent event) {
+        if (REGISTERED) return;
+        REGISTERED = true;
+
+        PayloadRegistrar r = event.registrar(CodexMod.MOD_ID).versioned(VERSION);
+
+        // server -> client
+        r.playToClient(SkillsSyncPayload.TYPE, SkillsSyncPayload.STREAM_CODEC, SkillsNetwork::handleSync);
+        r.playToClient(OpenSkillsBookPayload.TYPE, OpenSkillsBookPayload.STREAM_CODEC, SkillsNetwork::handleOpenSkillsBook);
+        r.playToClient(LevelUpToastPayload.TYPE, LevelUpToastPayload.STREAM_CODEC, SkillsNetwork::handleLevelUpToast);
+
+        // client -> server
+        r.playToServer(SkillActionPayload.TYPE, SkillActionPayload.STREAM_CODEC, SkillsNetwork::handleAction);
+    }
+
+    public static void syncTo(ServerPlayer player) {
+        PlayerSkills skills = player.getData(SkillsAttachments.PLAYER_SKILLS.get());
+        CompoundTag tag = skills.serializeNBT(player.level().registryAccess());
+        PacketDistributor.sendToPlayer(player, new SkillsSyncPayload(tag));
+    }
+
+    public static void sendOpenSkillsBook(ServerPlayer player) {
+        PacketDistributor.sendToPlayer(player, new OpenSkillsBookPayload());
+    }
+
+    public static void sendLevelUpToast(ServerPlayer player, int oldLevel, int newLevel, int skillPointsGained, int abilityPointsGained) {
+        PacketDistributor.sendToPlayer(player, new LevelUpToastPayload(oldLevel, newLevel, skillPointsGained, abilityPointsGained));
+    }
+
+    private static void handleSync(SkillsSyncPayload payload, IPayloadContext ctx) {
+        ctx.enqueueWork(() -> {
+            if (ctx.player() == null) return;
+
+            PlayerSkills skills = ctx.player().getData(SkillsAttachments.PLAYER_SKILLS.get());
+            CompoundTag tag = payload.data();
+            if (tag == null) tag = new CompoundTag();
+
+            skills.deserializeNBT(ctx.player().level().registryAccess(), tag);
+
+            if (ctx.player().level().isClientSide()) ClientOnly.afterSync();
+        });
+    }
+
+    private static void handleOpenSkillsBook(OpenSkillsBookPayload payload, IPayloadContext ctx) {
+        ctx.enqueueWork(() -> {
+            if (ctx.player() != null && ctx.player().level().isClientSide()) {
+                ClientOnly.openSkillsBook();
+            }
+        });
+    }
+
+    private static void handleLevelUpToast(LevelUpToastPayload payload, IPayloadContext ctx) {
+        ctx.enqueueWork(() -> {
+            if (ctx.player() != null && ctx.player().level().isClientSide()) {
+                ClientOnly.showLevelUpToast(payload.oldLevel(), payload.newLevel(), payload.skillPointsGained(), payload.abilityPointsGained());
+            }
+        });
+    }
+
+    private static void handleAction(SkillActionPayload payload, IPayloadContext ctx) {
+        ctx.enqueueWork(() -> {
+            if (!(ctx.player() instanceof ServerPlayer sp)) return;
+
+            SkillId[] vals = SkillId.values();
+            int ord = payload.skillOrdinal();
+            if (ord < 0 || ord >= vals.length) return;
+
+            SkillId id = vals[ord];
+
+            PlayerSkills skills = sp.getData(SkillsAttachments.PLAYER_SKILLS.get());
+            boolean changed = payload.upgrade()
+                    ? SkillLogic.tryUpgrade(sp, skills, id)
+                    : SkillLogic.tryDowngrade(skills, id);
+
+            if (!changed) return;
+
+            SkillLogic.applyAllEffects(sp, skills);
+            syncTo(sp);
+        });
+    }
+
+    public record SkillsSyncPayload(CompoundTag data) implements CustomPacketPayload {
+        public static final Type<SkillsSyncPayload> TYPE =
+                new Type<>(ResourceLocation.fromNamespaceAndPath(CodexMod.MOD_ID, "skills_sync"));
+
+        public static final StreamCodec<RegistryFriendlyByteBuf, SkillsSyncPayload> STREAM_CODEC =
+                StreamCodec.of(
+                        (buf, msg) -> buf.writeNbt(msg.data),
+                        buf -> {
+                            CompoundTag tag = buf.readNbt();
+                            return new SkillsSyncPayload(tag == null ? new CompoundTag() : tag);
+                        }
+                );
+
+        @Override public Type<? extends CustomPacketPayload> type() { return TYPE; }
+    }
+
+    // Used by SkillDetailsPanel (client -> server)
+    public record SkillActionPayload(int skillOrdinal, boolean upgrade) implements CustomPacketPayload {
+        public static final Type<SkillActionPayload> TYPE =
+                new Type<>(ResourceLocation.fromNamespaceAndPath(CodexMod.MOD_ID, "skill_action"));
+
+        public static final StreamCodec<RegistryFriendlyByteBuf, SkillActionPayload> STREAM_CODEC =
+                StreamCodec.of(
+                        (buf, msg) -> {
+                            buf.writeVarInt(msg.skillOrdinal);
+                            buf.writeBoolean(msg.upgrade);
+                        },
+                        buf -> new SkillActionPayload(buf.readVarInt(), buf.readBoolean())
+                );
+
+        @Override public Type<? extends CustomPacketPayload> type() { return TYPE; }
+    }
+
+    // Used by SkillsBookItem (server -> client)
+    public record OpenSkillsBookPayload() implements CustomPacketPayload {
+        public static final Type<OpenSkillsBookPayload> TYPE =
+                new Type<>(ResourceLocation.fromNamespaceAndPath(CodexMod.MOD_ID, "open_skills_book"));
+
+        public static final StreamCodec<RegistryFriendlyByteBuf, OpenSkillsBookPayload> STREAM_CODEC =
+                StreamCodec.of((buf, msg) -> {}, buf -> new OpenSkillsBookPayload());
+
+        @Override public Type<? extends CustomPacketPayload> type() { return TYPE; }
+    }
+
+    public record LevelUpToastPayload(int oldLevel, int newLevel, int skillPointsGained, int abilityPointsGained) implements CustomPacketPayload {
+        public static final Type<LevelUpToastPayload> TYPE =
+                new Type<>(ResourceLocation.fromNamespaceAndPath(CodexMod.MOD_ID, "level_up_toast"));
+
+        public static final StreamCodec<RegistryFriendlyByteBuf, LevelUpToastPayload> STREAM_CODEC =
+                StreamCodec.of(
+                        (buf, msg) -> {
+                            buf.writeVarInt(msg.oldLevel);
+                            buf.writeVarInt(msg.newLevel);
+                            buf.writeVarInt(msg.skillPointsGained);
+                            buf.writeVarInt(msg.abilityPointsGained);
+                        },
+                        buf -> new LevelUpToastPayload(buf.readVarInt(), buf.readVarInt(), buf.readVarInt(), buf.readVarInt())
+                );
+
+        @Override
+        public Type<? extends CustomPacketPayload> type() {
+            return TYPE;
+        }
+    }
+
+    @OnlyIn(Dist.CLIENT)
+    private static final class ClientOnly {
+        private static void openSkillsBook() {
+            if (AuraClientConfig.disableCodexBook()) return;
+            net.minecraft.client.Minecraft.getInstance()
+                    .setScreen(new net.revilodev.aura.client.screen.StandaloneSkillsBookScreen());
+        }
+
+        private static void afterSync() {
+        }
+
+        private static void showLevelUpToast(int oldLevel, int newLevel, int skillPointsGained, int abilityPointsGained) {
+            if (newLevel <= oldLevel) return;
+            LevelUpToast.show(oldLevel, newLevel, skillPointsGained, abilityPointsGained);
+        }
+    }
+}
