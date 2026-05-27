@@ -14,7 +14,6 @@ import net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 import net.neoforged.neoforge.network.registration.PayloadRegistrar;
 import net.revilodev.aura.CodexMod;
-import net.revilodev.aura.client.AuraClientConfig;
 import net.revilodev.aura.client.toast.LevelUpToast;
 import net.revilodev.aura.skills.logic.SkillLogic;
 
@@ -173,7 +172,6 @@ public final class SkillsNetwork {
     @OnlyIn(Dist.CLIENT)
     private static final class ClientOnly {
         private static void openSkillsBook() {
-            if (AuraClientConfig.disableCodexBook()) return;
             net.minecraft.client.Minecraft.getInstance()
                     .setScreen(new net.revilodev.aura.client.screen.StandaloneSkillsBookScreen());
         }

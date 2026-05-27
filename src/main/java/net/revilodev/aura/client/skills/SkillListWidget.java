@@ -112,7 +112,7 @@ public final class SkillListWidget extends AbstractWidget {
         if (!visible || mc.player == null) return;
         PlayerSkills ps = mc.player.getData(SkillsAttachments.PLAYER_SKILLS.get());
         if (headerVisible) {
-            drawScaledText(gg, "Points: " + ps.points(), getX() + 1, getY() + 4, 0x6AB2FF, POINTS_TEXT_SCALE);
+            drawScaledText(gg, Component.translatable("gui.aura.points.skill_short", ps.points()).getString(), getX() + 1, getY() + 4, 0x6AB2FF, POINTS_TEXT_SCALE);
         }
 
         int top = getY() + HEADER_HEIGHT;
@@ -156,10 +156,10 @@ public final class SkillListWidget extends AbstractWidget {
                         Component.empty()
                                 .append(name)
                                 .append(Component.literal(" "))
-                                .append(Component.literal("Lv " + ps.level(def.id())).withStyle(ChatFormatting.AQUA)),
+                                .append(Component.translatable("gui.aura.level.short", ps.level(def.id())).withStyle(ChatFormatting.AQUA)),
                         Component.literal(def.description()).withStyle(ChatFormatting.GRAY),
-                        Component.literal("Left Click to upgrade").withStyle(ChatFormatting.GREEN),
-                        Component.literal("Right Click to downgrade").withStyle(ChatFormatting.RED)
+                        Component.translatable("gui.aura.hint.left_upgrade").withStyle(ChatFormatting.GREEN),
+                        Component.translatable("gui.aura.hint.right_downgrade").withStyle(ChatFormatting.RED)
                 );
                 gg.renderTooltip(mc.font, lines, java.util.Optional.empty(), mouseX, mouseY);
             }

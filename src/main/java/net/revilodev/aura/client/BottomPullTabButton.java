@@ -10,6 +10,9 @@ import net.neoforged.api.distmarker.OnlyIn;
 
 @OnlyIn(Dist.CLIENT)
 public final class BottomPullTabButton extends AbstractButton {
+    private static final int TAB_WIDTH = 32;
+    private static final int NORMAL_HEIGHT = 32;
+    private static final int PULLED_HEIGHT = 35;
     private final ResourceLocation baseTexture;
     private final ResourceLocation pulledTexture;
     private final ResourceLocation selectedTexture;
@@ -17,7 +20,7 @@ public final class BottomPullTabButton extends AbstractButton {
     private boolean selected;
 
     public BottomPullTabButton(int x, int y, Component label, ResourceLocation baseTexture, ResourceLocation pulledTexture, ResourceLocation selectedTexture, Runnable onPress) {
-        super(x, y, 32, 32, label);
+        super(x, y, TAB_WIDTH, NORMAL_HEIGHT, label);
         this.baseTexture = baseTexture;
         this.pulledTexture = pulledTexture;
         this.selectedTexture = selectedTexture;
@@ -36,14 +39,23 @@ public final class BottomPullTabButton extends AbstractButton {
     @Override
     protected void renderWidget(GuiGraphics gg, int mouseX, int mouseY, float partialTick) {
         ResourceLocation texture;
+        int drawY = getY();
+        int drawH = NORMAL_HEIGHT;
+        int texH = NORMAL_HEIGHT;
         if (selected) {
             texture = selectedTexture != null ? selectedTexture : pulledTexture;
+            drawY -= 2;
+            drawH = PULLED_HEIGHT;
+            texH = PULLED_HEIGHT;
         } else if (isHovered()) {
-            texture = pulledTexture != null ? pulledTexture : baseTexture;
+            texture = baseTexture;
+            drawY -= 2;
+            drawH = NORMAL_HEIGHT;
+            texH = NORMAL_HEIGHT;
         } else {
             texture = baseTexture;
         }
-        gg.blit(texture, getX(), getY(), 0, 0, width, height, width, height);
+        gg.blit(texture, getX(), drawY, 0, 0, width, drawH, width, texH);
     }
 
     @Override

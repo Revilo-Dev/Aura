@@ -3,20 +3,30 @@ package net.revilodev.aura.client.screen;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.gui.screens.inventory.InventoryScreen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.api.distmarker.OnlyIn;
 import net.revilodev.aura.CodexMod;
+import net.revilodev.aura.abilities.AbilitiesAttachments;
+import net.revilodev.aura.attributes.CodexAttributes;
 import net.revilodev.aura.client.AuraClientConfig;
 import net.revilodev.aura.client.BottomPullTabButton;
 import net.revilodev.aura.client.PanelTab;
 import net.revilodev.aura.client.PanelTabButton;
+import net.revilodev.aura.client.abilities.AbilityKeybinds;
 import net.revilodev.aura.client.abilities.AbilityDetailsPanel;
 import net.revilodev.aura.client.abilities.AbilityListWidget;
 import net.revilodev.aura.client.skills.SkillDetailsPanel;
 import net.revilodev.aura.client.skills.SkillListWidget;
 import net.revilodev.aura.client.skills.SkillPanelHeaderRenderer;
+import net.revilodev.aura.abilities.AbilityElement;
+import net.revilodev.aura.abilities.AbilityId;
+import net.revilodev.aura.skills.SkillBalance;
+import net.revilodev.aura.skills.SkillId;
+import net.revilodev.aura.skills.SkillsAttachments;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -57,7 +67,7 @@ public final class StandaloneSkillsBookScreen extends Screen {
 
     private final List<SettingRow> settingsRows = new ArrayList<>();
     private int settingsScroll = 0;
-    private static final int SETTINGS_ROW_H = 22;
+    private static final int SETTINGS_ROW_H = 7;
     private static final int SETTINGS_VIEW_PAD_X = 6;
     private static final int SETTINGS_VIEW_TOP = 18;
     private static final int SETTINGS_VIEW_BOTTOM_PAD = 12;
@@ -75,7 +85,7 @@ public final class StandaloneSkillsBookScreen extends Screen {
     }
 
     public StandaloneSkillsBookScreen() {
-        super(Component.literal("aura"));
+        super(Component.translatable("gui.aura.book.title"));
     }
 
     @Override
@@ -103,9 +113,9 @@ public final class StandaloneSkillsBookScreen extends Screen {
             abilityDetails.setAbility(def);
             abilityList.setSelected(def == null ? null : def.id());
         });
-        abilityList.setViewportTweaks(0, 0);
+        abilityList.setViewportTweaks(0, 0, 8);
         abilityList.setShowLocked(true);
-        abilityList.setHeaderTextOffsetX(0);
+        abilityList.setHeaderTextOffsetX(15);
         abilityDetails = new AbilityDetailsPanel(detailsX, detailsY + 3, detailsW, detailsH);
         abilityDetails.setContentTopOffset(3);
 
@@ -114,8 +124,8 @@ public final class StandaloneSkillsBookScreen extends Screen {
 
         int bottomY = panelY + panelHeight - 3;
         int bottomX = panelX + 7;
-        playerBottomTab = new BottomPullTabButton(bottomX, bottomY, Component.literal("Player"), PLAYER_TAB_TEX, PLAYER_TAB_TEX_PULLED, PLAYER_TAB_TEX_SELECTED, () -> setViewMode(ViewMode.PLAYER));
-        settingsBottomTab = new BottomPullTabButton(bottomX + 32 + 2, bottomY, Component.literal("Settings"), SETTINGS_TAB_TEX, SETTINGS_TAB_TEX_PULLED_ALT, SETTINGS_TAB_TEX_PULLED_ALT, () -> setViewMode(ViewMode.SETTINGS));
+        playerBottomTab = new BottomPullTabButton(bottomX, bottomY, Component.translatable("gui.aura.player"), PLAYER_TAB_TEX, PLAYER_TAB_TEX_PULLED, PLAYER_TAB_TEX_SELECTED, () -> setViewMode(ViewMode.PLAYER));
+        settingsBottomTab = new BottomPullTabButton(bottomX + 32 + 2, bottomY, Component.translatable("gui.aura.settings"), SETTINGS_TAB_TEX, SETTINGS_TAB_TEX_PULLED_ALT, SETTINGS_TAB_TEX_PULLED_ALT, () -> setViewMode(ViewMode.SETTINGS));
         playerBottomTab.setPosition(bottomX - 3, bottomY);
         settingsBottomTab.setPosition((bottomX - 3) + 32 + 2, bottomY);
 
@@ -140,12 +150,11 @@ public final class StandaloneSkillsBookScreen extends Screen {
 
     private void initSettingsRows() {
         settingsRows.clear();
-        settingsRows.add(new SettingRow("Hud display", () -> AuraClientConfig.hudDisplayEnabled() ? "Enabled" : "Disabled", AuraClientConfig::toggleHudDisplayEnabled));
-        settingsRows.add(new SettingRow("Disable aura book", () -> AuraClientConfig.disableCodexBook() ? "True" : "False", AuraClientConfig::toggleDisableCodexBook));
-        settingsRows.add(new SettingRow("Disable inventory aura book", () -> AuraClientConfig.disableInventoryCodexBook() ? "True" : "False", AuraClientConfig::toggleDisableInventoryCodexBook));
-        settingsRows.add(new SettingRow("Reposition hud display", () -> AuraClientConfig.hudPosition().name().toLowerCase(java.util.Locale.ROOT).replace('_', ' '), AuraClientConfig::cycleHudPosition));
-        settingsRows.add(new SettingRow("Disable skills and abilities", () -> AuraClientConfig.disableSkillsAndAbilities() ? "True" : "False", AuraClientConfig::toggleDisableSkillsAndAbilities));
-        settingsRows.add(new SettingRow("Disabled Skills & Abilities...", () -> "Open", () -> minecraft.setScreen(new DisabledSkillsAbilitiesScreen(this))));
+        settingsRows.add(new SettingRow(Component.translatable("gui.aura.settings.hud_display").getString(), () -> boolState(AuraClientConfig.hudDisplayEnabled()), AuraClientConfig::toggleHudDisplayEnabled));
+        settingsRows.add(new SettingRow(Component.translatable("gui.aura.settings.disable_inventory_book").getString(), () -> boolState(AuraClientConfig.disableInventoryCodexBook()), AuraClientConfig::toggleDisableInventoryCodexBook));
+        settingsRows.add(new SettingRow(Component.translatable("gui.aura.settings.reposition_hud").getString(), () -> Component.translatable("gui.aura.hud_position." + AuraClientConfig.hudPosition().name().toLowerCase(java.util.Locale.ROOT)).getString(), AuraClientConfig::cycleHudPosition));
+        settingsRows.add(new SettingRow(Component.translatable("gui.aura.settings.disable_skills_abilities").getString(), () -> boolState(AuraClientConfig.disableSkillsAndAbilities()), AuraClientConfig::toggleDisableSkillsAndAbilities));
+        settingsRows.add(new SettingRow(Component.translatable("gui.aura.settings.disabled_skills_abilities").getString(), () -> Component.translatable("gui.aura.open").getString(), () -> minecraft.setScreen(new DisabledSkillsAbilitiesScreen(this))));
     }
 
     @Override
@@ -160,10 +169,10 @@ public final class StandaloneSkillsBookScreen extends Screen {
                 Minecraft.getInstance().font,
                 panelX + HEADER_OFFSET_X,
                 panelY - SkillPanelHeaderRenderer.height() + HEADER_OFFSET_Y,
-                viewMode == ViewMode.SETTINGS ? "Settings" : (viewMode == ViewMode.PLAYER ? "Player" : activeTab.title())
+                viewMode == ViewMode.SETTINGS ? Component.translatable("gui.aura.settings").getString() : (viewMode == ViewMode.PLAYER ? Component.translatable("gui.aura.player").getString() : activeTab.title())
         );
         if (viewMode == ViewMode.PLAYER) {
-            gg.drawCenteredString(font, "Player tab coming soon.", panelX + panelWidth / 2, panelY + panelHeight / 2 - 4, 0xE0E0E0);
+            renderPlayerView(gg, mouseX, mouseY);
         }
         if (viewMode == ViewMode.SETTINGS) {
             renderSettingsRows(gg, mouseX, mouseY);
@@ -302,30 +311,7 @@ public final class StandaloneSkillsBookScreen extends Screen {
 
     private void setTab(PanelTab tab) {
         activeTab = tab;
-        viewMode = ViewMode.MAIN;
-        boolean skillsActive = activeTab == PanelTab.SKILLS && viewMode == ViewMode.MAIN;
-        skillsTab.setSelected(skillsActive);
-        abilitiesTab.setSelected(!skillsActive && viewMode == ViewMode.MAIN);
-
-        skillsList.visible = skillsActive;
-        skillsList.active = skillsActive;
-        skillsDetails.visible = false;
-        skillsDetails.active = false;
-        skillsDetails.upgradeButton().visible = false;
-        skillsDetails.upgradeButton().active = false;
-        skillsDetails.downgradeButton().visible = false;
-        skillsDetails.downgradeButton().active = false;
-
-        abilityList.visible = !skillsActive && viewMode == ViewMode.MAIN;
-        abilityList.active = !skillsActive && viewMode == ViewMode.MAIN;
-        abilityDetails.visible = false;
-        abilityDetails.active = false;
-        abilityDetails.upgradeButton().visible = false;
-        abilityDetails.upgradeButton().active = false;
-        abilityDetails.downgradeButton().visible = false;
-        abilityDetails.downgradeButton().active = false;
-        abilityDetails.selectButton().visible = false;
-        abilityDetails.selectButton().active = false;
+        setViewMode(ViewMode.MAIN);
     }
 
     private void setViewMode(ViewMode mode) {
@@ -393,8 +379,8 @@ public final class StandaloneSkillsBookScreen extends Screen {
     }
 
     private void renderSettingsRows(GuiGraphics gg, int mouseX, int mouseY) {
-        int xLeft = panelX + SETTINGS_VIEW_PAD_X + 2;
-        int xRight = panelX + panelWidth - SETTINGS_VIEW_PAD_X - 2;
+        int xLeft = panelX + SETTINGS_VIEW_PAD_X + 7;
+        int xRight = panelX + panelWidth - SETTINGS_VIEW_PAD_X - 7;
         int y0 = settingsViewY();
         int y1 = y0 + settingsViewHeight();
         float scale = 0.5F;
@@ -409,7 +395,7 @@ public final class StandaloneSkillsBookScreen extends Screen {
 
             String label = settingsRows.get(i).label;
             String state = settingsRows.get(i).state.get();
-            int labelY = y + 6;
+            int labelY = y + 1;
             drawScaledText(gg, label, xLeft, labelY, labelColor, scale);
             int stateW = (int) (font.width(state) * scale);
             drawScaledText(gg, state, xRight - stateW, labelY, stateColor, scale);
@@ -423,6 +409,55 @@ public final class StandaloneSkillsBookScreen extends Screen {
         gg.pose().scale(scale, scale, 1.0F);
         gg.drawString(font, text, 0, 0, color, false);
         gg.pose().popPose();
+    }
+
+    private void renderPlayerView(GuiGraphics gg, int mouseX, int mouseY) {
+        if (minecraft == null || minecraft.player == null) return;
+
+        int dollX = panelX + 30;
+        int dollY = panelY + panelHeight - 18;
+        int dollSize = 36;
+        InventoryScreen.renderEntityInInventoryFollowsMouse(gg, dollX, dollY, dollSize, dollX - mouseX, dollY - 26 - mouseY, 30.0F, 0.0F, 0.0F, minecraft.player);
+
+        var player = minecraft.player;
+        var playerAbilities = player.getData(AbilitiesAttachments.PLAYER_ABILITIES.get());
+        var skills = player.getData(SkillsAttachments.PLAYER_SKILLS.get());
+        double baseDamage = player.getAttributeValue(Attributes.ATTACK_DAMAGE);
+        double critPower = 1.5D + SkillBalance.critPowerDamage(skills.level(SkillId.CRIT_POWER));
+        double abilityPower = CodexAttributes.baseAbilityPower(player);
+        int defence = player.getArmorValue();
+
+        int textX = panelX + 58;
+        int textY = panelY + 28;
+        int lineH = 9;
+        float scale = 0.65F;
+        drawScaledText(gg, Component.translatable("gui.aura.player.level", player.experienceLevel).getString(), panelX + 8, panelY + 10, 0xFFE08A, 0.75F);
+        drawScaledText(gg, Component.translatable("gui.aura.player.base_damage", fmt(baseDamage)).getString(), textX, textY, 0xFF8080, scale);
+        drawScaledText(gg, Component.translatable("gui.aura.player.crit_power", fmt(critPower) + "x").getString(), textX, textY + lineH, 0xFFD580, scale);
+        drawScaledText(gg, Component.translatable("gui.aura.player.ability_power", fmt(abilityPower)).getString(), textX, textY + (lineH * 2), 0xC78CFF, scale);
+        drawScaledText(gg, Component.translatable("gui.aura.player.defence", defence).getString(), textX, textY + (lineH * 3), 0x8CD3FF, scale);
+
+        int listY = panelY + 92;
+        drawScaledText(gg, Component.translatable("gui.aura.player.selected_abilities").getString(), panelX + 8, listY, 0xE0E0E0, 0.65F);
+        int row = 1;
+        for (AbilityElement element : AbilityElement.values()) {
+            AbilityId selected = playerAbilities.selectedSpecialization(element);
+            if (selected == null) continue;
+            String line = Component.translatable("gui.aura.player.ability_bind", selected.title(), AbilityKeybinds.keyName(selected)).getString();
+            drawScaledText(gg, line, panelX + 8, listY + (row * 8), 0xD8D8D8, 0.6F);
+            row++;
+            if (row > 6) break;
+        }
+    }
+
+    private static String fmt(double value) {
+        String out = String.format(java.util.Locale.ROOT, "%.2f", value);
+        while (out.contains(".") && (out.endsWith("0") || out.endsWith("."))) out = out.substring(0, out.length() - 1);
+        return out;
+    }
+
+    private static String boolState(boolean value) {
+        return Component.translatable(value ? "gui.aura.state.enabled" : "gui.aura.state.disabled").getString();
     }
 
     private static final class SettingRow {

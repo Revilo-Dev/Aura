@@ -19,6 +19,7 @@ public final class SkillsBookKeybinds {
             InputConstants.KEY_RBRACKET,
             CATEGORY
     );
+    private static boolean openBookWasDown = false;
 
     private SkillsBookKeybinds() {}
 
@@ -34,9 +35,14 @@ public final class SkillsBookKeybinds {
     private static void onClientTick(ClientTickEvent.Post event) {
         Minecraft mc = Minecraft.getInstance();
         if (mc.player == null) return;
-        if (AuraClientConfig.disableCodexBook()) return;
+        boolean pressed = false;
         while (OPEN_BOOK.consumeClick()) {
+            pressed = true;
+        }
+        boolean down = OPEN_BOOK.isDown();
+        if (pressed || (down && !openBookWasDown)) {
             mc.setScreen(new StandaloneSkillsBookScreen());
         }
+        openBookWasDown = down;
     }
 }

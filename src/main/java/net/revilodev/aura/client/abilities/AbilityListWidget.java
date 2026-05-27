@@ -80,6 +80,7 @@ public final class AbilityListWidget extends AbstractWidget {
     private boolean dragging = false;
     private int viewportExtraOffsetX = 0;
     private int viewportExtraWidth = 0;
+    private int viewportExtraOffsetY = 0;
     private int headerTextOffsetX = 0;
 
     public AbilityListWidget(int x, int y, int w, int h, Consumer<AbilityDefinition> onClick) {
@@ -145,9 +146,10 @@ public final class AbilityListWidget extends AbstractWidget {
         reloadAbilities();
     }
 
-    public void setViewportTweaks(int extraOffsetX, int extraWidth) {
+    public void setViewportTweaks(int extraOffsetX, int extraWidth, int extraOffsetY) {
         this.viewportExtraOffsetX = extraOffsetX;
         this.viewportExtraWidth = extraWidth;
+        this.viewportExtraOffsetY = extraOffsetY;
     }
 
     public void setHeaderTextOffsetX(int offset) {
@@ -187,11 +189,11 @@ public final class AbilityListWidget extends AbstractWidget {
             reloadAbilities();
         }
         if (headerVisible) {
-            drawScaledText(gg, "Ability Points: " + abilities.points(), getX() + 1 + headerTextOffsetX, getY() + 4, 0xC78CFF, 0.85F);
+            drawScaledText(gg, Component.translatable("gui.aura.points.ability", abilities.points()).getString(), getX() + 1 + headerTextOffsetX, getY() + 4, 0xC78CFF, 0.85F);
         }
 
         int viewportX = getX() + VIEWPORT_OFFSET_X + viewportExtraOffsetX;
-        int viewportY = getY() + HEADER_HEIGHT + VIEWPORT_OFFSET_Y;
+        int viewportY = getY() + HEADER_HEIGHT + VIEWPORT_OFFSET_Y + viewportExtraOffsetY;
         int viewportW = Math.min(width, VIEWPORT_W + viewportExtraWidth);
         int viewportH = Math.min(height - HEADER_HEIGHT, VIEWPORT_H);
         int maxOffsetX = Math.max(0, gridWidth() - viewportW);
@@ -253,15 +255,15 @@ public final class AbilityListWidget extends AbstractWidget {
                         Component.empty()
                                 .append(name)
                                 .append(Component.literal(" "))
-                                .append(Component.literal("Lv " + lvl).withStyle(ChatFormatting.LIGHT_PURPLE)),
+                                .append(Component.translatable("gui.aura.level.short", lvl).withStyle(ChatFormatting.LIGHT_PURPLE)),
                         Component.literal(def.description()).withStyle(ChatFormatting.GRAY),
                         styledStatLine(stats),
-                        Component.literal(def.type() == net.revilodev.aura.abilities.AbilityNodeType.CORE
-                                ? "Left Click to upgrade"
-                                : "Click to select").withStyle(ChatFormatting.GREEN),
-                        Component.literal(def.type() == net.revilodev.aura.abilities.AbilityNodeType.CORE
-                                ? "Right Click to downgrade"
-                                : "").withStyle(ChatFormatting.RED)
+                        Component.translatable(def.type() == net.revilodev.aura.abilities.AbilityNodeType.CORE
+                                ? "gui.aura.hint.left_upgrade"
+                                : "gui.aura.hint.click_select").withStyle(ChatFormatting.GREEN),
+                        Component.translatable(def.type() == net.revilodev.aura.abilities.AbilityNodeType.CORE
+                                ? "gui.aura.hint.right_downgrade"
+                                : "gui.aura.empty").withStyle(ChatFormatting.RED)
                 ), java.util.Optional.empty(), mouseX, mouseY - 4);
                 gg.enableScissor(viewportX, viewportY, viewportX + viewportW, viewportY + viewportH);
             }
@@ -300,7 +302,7 @@ public final class AbilityListWidget extends AbstractWidget {
 
     private Node nodeAt(double mx, double my) {
         int viewportX = getX() + VIEWPORT_OFFSET_X + viewportExtraOffsetX;
-        int top = getY() + HEADER_HEIGHT + VIEWPORT_OFFSET_Y;
+        int top = getY() + HEADER_HEIGHT + VIEWPORT_OFFSET_Y + viewportExtraOffsetY;
         for (Node node : nodes) {
             int x = viewportX + node.col * (CELL_SIZE + GAP) - offsetX;
             int y = top + node.row * (CELL_SIZE + GAP) - offsetY;

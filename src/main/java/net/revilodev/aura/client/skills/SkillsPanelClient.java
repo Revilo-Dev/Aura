@@ -10,6 +10,7 @@ import net.minecraft.client.gui.screens.inventory.InventoryScreen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.Mth;
+import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.api.distmarker.OnlyIn;
 import net.neoforged.bus.api.EventPriority;
@@ -17,17 +18,25 @@ import net.neoforged.neoforge.client.event.ScreenEvent;
 import net.neoforged.neoforge.common.NeoForge;
 import net.revilodev.aura.CodexMod;
 import net.revilodev.aura.abilities.AbilitiesAttachments;
+import net.revilodev.aura.abilities.AbilityElement;
+import net.revilodev.aura.abilities.AbilityId;
 import net.revilodev.aura.abilities.PlayerAbilities;
+import net.revilodev.aura.attributes.CodexAttributes;
 import net.revilodev.aura.client.AuraClientConfig;
 import net.revilodev.aura.client.BottomPullTabButton;
 import net.revilodev.aura.client.PanelTab;
 import net.revilodev.aura.client.PanelTabButton;
 import net.revilodev.aura.client.SkillsToggleButton;
+import net.revilodev.aura.client.abilities.AbilityKeybinds;
 import net.revilodev.aura.client.abilities.AbilityDetailsPanel;
 import net.revilodev.aura.client.abilities.AbilityListWidget;
+import net.revilodev.aura.skills.SkillBalance;
+import net.revilodev.aura.skills.SkillId;
 import net.revilodev.aura.skills.SkillsAttachments;
 
 import java.lang.reflect.Field;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.WeakHashMap;
 import java.util.function.Supplier;
@@ -60,6 +69,10 @@ public final class SkillsPanelClient {
     private static final int INNER_PAD_BOTTOM = 6;
     private static final int HEADER_OFFSET_X = 5;
     private static final int HEADER_OFFSET_Y = 3;
+    private static final int SETTINGS_ROW_H = 7;
+    private static final int SETTINGS_VIEW_PAD_X = 6;
+    private static final int SETTINGS_VIEW_TOP = 18;
+    private static final int SETTINGS_VIEW_BOTTOM_PAD = 12;
 
     private static final Map<Screen, State> STATES = new WeakHashMap<>();
     private static Field LEFT_FIELD;
@@ -102,12 +115,13 @@ public final class SkillsPanelClient {
         });
         st.abilityList.setHeaderVisible(false);
         st.abilityList.setShowLocked(true);
-        st.abilityList.setViewportTweaks(0, 0);
+        st.abilityList.setViewportTweaks(0, 0, 7);
         st.abilityDetails = new AbilityDetailsPanel(0, 0, AbilityListWidget.gridWidth(), PANEL_H / 3);
         st.skillsTab = new PanelTabButton(0, 0, PanelTab.SKILLS, () -> setTab(st, PanelTab.SKILLS));
         st.abilitiesTab = new PanelTabButton(0, 0, PanelTab.ABILITIES, () -> setTab(st, PanelTab.ABILITIES));
-        st.playerBottomTab = new BottomPullTabButton(0, 0, Component.literal("Player"), PLAYER_TAB_TEX, PLAYER_TAB_TEX_PULLED, PLAYER_TAB_TEX_SELECTED, () -> setViewMode(st, ViewMode.PLAYER));
-        st.settingsBottomTab = new BottomPullTabButton(0, 0, Component.literal("Settings"), SETTINGS_TAB_TEX, SETTINGS_TAB_TEX_PULLED_ALT, SETTINGS_TAB_TEX_PULLED_ALT, () -> setViewMode(st, ViewMode.SETTINGS));
+        st.playerBottomTab = new BottomPullTabButton(0, 0, Component.translatable("gui.aura.player"), PLAYER_TAB_TEX, PLAYER_TAB_TEX_PULLED, PLAYER_TAB_TEX_SELECTED, () -> setViewMode(st, ViewMode.PLAYER));
+        st.settingsBottomTab = new BottomPullTabButton(0, 0, Component.translatable("gui.aura.settings"), SETTINGS_TAB_TEX, SETTINGS_TAB_TEX_PULLED_ALT, SETTINGS_TAB_TEX_PULLED_ALT, () -> setViewMode(st, ViewMode.SETTINGS));
+        initSettingsRows(st);
 
         event.addListener(st.btn);
 
@@ -123,7 +137,6 @@ public final class SkillsPanelClient {
         st.viewMode = ViewMode.MAIN;
         updateVisibility(st);
         applySkillsVsRecipePanelRule(inv, st);
-        if (st.open) forceHideRecipeButtonIfSkillsOpen(st);
     }
 
     public static void onScreenClosing(ScreenEvent.Closing event) {
@@ -146,8 +159,6 @@ public final class SkillsPanelClient {
         applySkillsVsRecipePanelRule(inv, st);
 
         if (st.recipeBtn == null) st.recipeBtn = findRecipeButton(inv);
-        if (st.open) forceHideRecipeButtonIfSkillsOpen(st);
-        else restoreRecipeButtonIfWeHidIt(inv, st);
     }
 
     public static void onScreenRenderPost(ScreenEvent.Render.Post event) {
@@ -167,6 +178,11 @@ public final class SkillsPanelClient {
         } else {
             st.abilityList.render(event.getGuiGraphics(), event.getMouseX(), event.getMouseY(), event.getPartialTick());
         }
+        if (st.viewMode == ViewMode.SETTINGS) {
+            renderSettingsRows(event.getGuiGraphics(), st, event.getMouseX(), event.getMouseY());
+        } else if (st.viewMode == ViewMode.PLAYER) {
+            renderPlayerView(event.getGuiGraphics(), st, event.getMouseX(), event.getMouseY());
+        }
         renderPointsBadge(event.getGuiGraphics(), st, inv);
         event.getGuiGraphics().pose().popPose();
     }
@@ -175,6 +191,13 @@ public final class SkillsPanelClient {
         if (AuraClientConfig.disableInventoryCodexBook()) return;
         State st = STATES.get(event.getScreen());
         if (st == null || !st.open) return;
+        if (st.viewMode == ViewMode.SETTINGS) {
+            if (!isInSettingsView(st, event.getMouseX(), event.getMouseY())) return;
+            int maxScroll = Math.max(0, st.settingsRows.size() * SETTINGS_ROW_H - settingsViewHeight());
+            st.settingsScroll = Math.max(0, Math.min(maxScroll, st.settingsScroll - (int) Math.signum(event.getScrollDeltaY()) * 14));
+            event.setCanceled(true);
+            return;
+        }
         if (st.viewMode != ViewMode.MAIN) return;
 
         double mx = event.getMouseX();
@@ -221,6 +244,20 @@ public final class SkillsPanelClient {
             event.setCanceled(true);
             return;
         }
+        if (st.viewMode == ViewMode.SETTINGS) {
+            if (event.getButton() == 0 && isInSettingsView(st, mouseX, mouseY)) {
+                int index = (int) ((mouseY - settingsViewY(st) + st.settingsScroll) / SETTINGS_ROW_H);
+                if (index >= 0 && index < st.settingsRows.size()) {
+                    st.settingsRows.get(index).onClick().run();
+                }
+            }
+            if (isInsideOverlay(st, mouseX, mouseY)) event.setCanceled(true);
+            return;
+        }
+        if (st.viewMode == ViewMode.PLAYER) {
+            if (isInsideOverlay(st, mouseX, mouseY)) event.setCanceled(true);
+            return;
+        }
 
         boolean used = false;
         if (st.viewMode == ViewMode.MAIN) {
@@ -251,8 +288,6 @@ public final class SkillsPanelClient {
         applySkillsVsRecipePanelRule(st.inv, st);
 
         if (st.recipeBtn == null) st.recipeBtn = findRecipeButton(st.inv);
-        if (st.open) forceHideRecipeButtonIfSkillsOpen(st);
-        else restoreRecipeButtonIfWeHidIt(st.inv, st);
     }
 
     private static void setTab(State st, PanelTab tab) {
@@ -264,6 +299,9 @@ public final class SkillsPanelClient {
 
     private static void setViewMode(State st, ViewMode viewMode) {
         st.viewMode = viewMode;
+        if (viewMode == ViewMode.SETTINGS) {
+            st.settingsScroll = Math.max(0, st.settingsScroll);
+        }
         updateVisibility(st);
     }
 
@@ -280,27 +318,6 @@ public final class SkillsPanelClient {
         }
     }
 
-    private static void forceHideRecipeButtonIfSkillsOpen(State st) {
-        if (st.recipeBtn == null) return;
-        st.recipeBtn.visible = false;
-        st.recipeBtn.active = false;
-        st.recipeHiddenBySkills = true;
-    }
-
-    private static void restoreRecipeButtonIfWeHidIt(InventoryScreen inv, State st) {
-        if (!st.recipeHiddenBySkills) return;
-        if (isQuestPanelOpen(inv)) {
-            st.recipeHiddenBySkills = false;
-            return;
-        }
-        if (st.recipeBtn == null) st.recipeBtn = findRecipeButton(inv);
-        if (st.recipeBtn != null) {
-            st.recipeBtn.visible = true;
-            st.recipeBtn.active = true;
-        }
-        st.recipeHiddenBySkills = false;
-    }
-
     private static ImageButton findRecipeButton(InventoryScreen inv) {
         for (var child : inv.children()) {
             if (child instanceof ImageButton btn && btn.getWidth() == 20 && btn.getHeight() == 18) {
@@ -308,18 +325,6 @@ public final class SkillsPanelClient {
             }
         }
         return null;
-    }
-
-    private static boolean isQuestPanelOpen(InventoryScreen inv) {
-        for (var child : inv.children()) {
-            if (child instanceof AbstractWidget w) {
-                String name = child.getClass().getName();
-                if (name.equals("net.revilodev.boundless.client.QuestPanelClient$PanelBackground") && w.visible) {
-                    return true;
-                }
-            }
-        }
-        return false;
     }
 
     private static boolean isRecipePanelOpen(InventoryScreen inv) {
@@ -448,9 +453,9 @@ public final class SkillsPanelClient {
                 ? mc.player.getData(AbilitiesAttachments.PLAYER_ABILITIES.get()).points()
                 : mc.player.getData(SkillsAttachments.PLAYER_SKILLS.get()).points();
 
-        String label = abilitiesTab ? "Ability Points: " + points : "Skill Points: " + points;
+        String label = Component.translatable(abilitiesTab ? "gui.aura.points.ability" : "gui.aura.points.skill", points).getString();
         float scale = 0.85F;
-        int x = (abilitiesTab ? st.abilityList.getX() + 15 : st.skillsList.getX()) + 1;
+        int x = (abilitiesTab ? st.abilityList.getX() + 10 : st.skillsList.getX()) + 1;
         int y = (abilitiesTab ? st.abilityList.getY() : st.skillsList.getY()) + 4;
         int color = abilitiesTab ? 0xC78CFF : 0x6AB2FF;
         gg.pose().pushPose();
@@ -467,6 +472,113 @@ public final class SkillsPanelClient {
         int bottom = top + PANEL_H;
         int tabLeft = left - 31;
         return mouseX >= tabLeft && mouseX <= right && mouseY >= top && mouseY <= bottom;
+    }
+
+    private static void initSettingsRows(State st) {
+        st.settingsRows.clear();
+        st.settingsRows.add(new SettingRow(Component.translatable("gui.aura.settings.hud_display").getString(), () -> boolState(AuraClientConfig.hudDisplayEnabled()), AuraClientConfig::toggleHudDisplayEnabled));
+        st.settingsRows.add(new SettingRow(Component.translatable("gui.aura.settings.disable_inventory_book").getString(), () -> boolState(AuraClientConfig.disableInventoryCodexBook()), AuraClientConfig::toggleDisableInventoryCodexBook));
+        st.settingsRows.add(new SettingRow(Component.translatable("gui.aura.settings.reposition_hud").getString(), () -> Component.translatable("gui.aura.hud_position." + AuraClientConfig.hudPosition().name().toLowerCase(java.util.Locale.ROOT)).getString(), AuraClientConfig::cycleHudPosition));
+        st.settingsRows.add(new SettingRow(Component.translatable("gui.aura.settings.disable_skills_abilities").getString(), () -> boolState(AuraClientConfig.disableSkillsAndAbilities()), AuraClientConfig::toggleDisableSkillsAndAbilities));
+    }
+
+    private static int settingsViewY(State st) {
+        return st.bg.getY() + SETTINGS_VIEW_TOP;
+    }
+
+    private static int settingsViewHeight() {
+        return PANEL_H - SETTINGS_VIEW_TOP - SETTINGS_VIEW_BOTTOM_PAD;
+    }
+
+    private static boolean isInSettingsView(State st, double mouseX, double mouseY) {
+        int x0 = st.bg.getX() + SETTINGS_VIEW_PAD_X;
+        int x1 = st.bg.getX() + PANEL_W - SETTINGS_VIEW_PAD_X;
+        int y0 = settingsViewY(st);
+        int y1 = y0 + settingsViewHeight();
+        return mouseX >= x0 && mouseX <= x1 && mouseY >= y0 && mouseY <= y1;
+    }
+
+    private static void renderSettingsRows(GuiGraphics gg, State st, int mouseX, int mouseY) {
+        var mc = net.minecraft.client.Minecraft.getInstance();
+        int xLeft = st.bg.getX() + SETTINGS_VIEW_PAD_X + 7;
+        int xRight = st.bg.getX() + PANEL_W - SETTINGS_VIEW_PAD_X - 7;
+        int y0 = settingsViewY(st);
+        int y1 = y0 + settingsViewHeight();
+        float scale = 0.5F;
+
+        gg.enableScissor(st.bg.getX() + SETTINGS_VIEW_PAD_X, y0, st.bg.getX() + PANEL_W - SETTINGS_VIEW_PAD_X, y1);
+        for (int i = 0; i < st.settingsRows.size(); i++) {
+            int y = y0 + i * SETTINGS_ROW_H - st.settingsScroll;
+            if (y + SETTINGS_ROW_H < y0 || y > y1) continue;
+            boolean hovered = mouseX >= st.bg.getX() + SETTINGS_VIEW_PAD_X && mouseX <= st.bg.getX() + PANEL_W - SETTINGS_VIEW_PAD_X && mouseY >= y && mouseY <= y + SETTINGS_ROW_H;
+            int labelColor = hovered ? 0xFFFF55 : 0xFFFFFF;
+            int stateColor = 0x6AB2FF;
+            String label = st.settingsRows.get(i).label();
+            String state = st.settingsRows.get(i).state().get();
+            int labelY = y + 1;
+            drawScaledText(gg, mc, label, xLeft, labelY, labelColor, scale);
+            int stateW = (int) (mc.font.width(state) * scale);
+            drawScaledText(gg, mc, state, xRight - stateW, labelY, stateColor, scale);
+        }
+        gg.disableScissor();
+    }
+
+    private static void drawScaledText(GuiGraphics gg, net.minecraft.client.Minecraft mc, String text, int x, int y, int color, float scale) {
+        gg.pose().pushPose();
+        gg.pose().translate(x, y, 0.0F);
+        gg.pose().scale(scale, scale, 1.0F);
+        gg.drawString(mc.font, text, 0, 0, color, false);
+        gg.pose().popPose();
+    }
+
+    private static void renderPlayerView(GuiGraphics gg, State st, int mouseX, int mouseY) {
+        var mc = net.minecraft.client.Minecraft.getInstance();
+        if (mc.player == null) return;
+
+        int dollX = st.bg.getX() + 30;
+        int dollY = st.bg.getY() + PANEL_H - 18;
+        int dollSize = 36;
+        InventoryScreen.renderEntityInInventoryFollowsMouse(gg, dollX, dollY, dollSize, dollX - mouseX, dollY - 26 - mouseY, 30.0F, 0.0F, 0.0F, mc.player);
+
+        var player = mc.player;
+        var playerAbilities = player.getData(AbilitiesAttachments.PLAYER_ABILITIES.get());
+        var skills = player.getData(SkillsAttachments.PLAYER_SKILLS.get());
+        double baseDamage = player.getAttributeValue(Attributes.ATTACK_DAMAGE);
+        double critPower = 1.5D + SkillBalance.critPowerDamage(skills.level(SkillId.CRIT_POWER));
+        double abilityPower = CodexAttributes.baseAbilityPower(player);
+        int defence = player.getArmorValue();
+
+        int textX = st.bg.getX() + 58;
+        int textY = st.bg.getY() + 28;
+        int lineH = 9;
+        float scale = 0.65F;
+        drawScaledText(gg, mc, Component.translatable("gui.aura.player.level", player.experienceLevel).getString(), st.bg.getX() + 8, st.bg.getY() + 10, 0xFFE08A, 0.75F);
+        drawScaledText(gg, mc, Component.translatable("gui.aura.player.base_damage", fmt(baseDamage)).getString(), textX, textY, 0xFF8080, scale);
+        drawScaledText(gg, mc, Component.translatable("gui.aura.player.crit_power", fmt(critPower) + "x").getString(), textX, textY + lineH, 0xFFD580, scale);
+        drawScaledText(gg, mc, Component.translatable("gui.aura.player.ability_power", fmt(abilityPower)).getString(), textX, textY + (lineH * 2), 0xC78CFF, scale);
+        drawScaledText(gg, mc, Component.translatable("gui.aura.player.defence", defence).getString(), textX, textY + (lineH * 3), 0x8CD3FF, scale);
+
+        int listY = st.bg.getY() + 92;
+        drawScaledText(gg, mc, Component.translatable("gui.aura.player.selected_abilities").getString(), st.bg.getX() + 8, listY, 0xE0E0E0, 0.65F);
+        int row = 1;
+        for (AbilityElement element : AbilityElement.values()) {
+            AbilityId selected = playerAbilities.selectedSpecialization(element);
+            if (selected == null) continue;
+            String line = Component.translatable("gui.aura.player.ability_bind", selected.title(), AbilityKeybinds.keyName(selected)).getString();
+            drawScaledText(gg, mc, line, st.bg.getX() + 8, listY + (row * 8), 0xD8D8D8, 0.6F);
+            row++;
+            if (row > 6) break;
+        }
+    }
+
+    private static String fmt(double value) {
+        String out = String.format(java.util.Locale.ROOT, "%.2f", value);
+        while (out.contains(".") && (out.endsWith("0") || out.endsWith("."))) out = out.substring(0, out.length() - 1);
+        return out;
+    }
+
+    private static String boolState(boolean value) {
+        return Component.translatable(value ? "gui.aura.state.enabled" : "gui.aura.state.disabled").getString();
     }
 
     private static final class PanelBackground extends AbstractWidget {
@@ -512,13 +624,14 @@ public final class SkillsPanelClient {
         PanelTabButton skillsTab;
         PanelTabButton abilitiesTab;
         ImageButton recipeBtn;
-        boolean recipeHiddenBySkills;
         boolean open;
         Integer originalLeft;
         PanelTab activeTab = PanelTab.SKILLS;
         BottomPullTabButton playerBottomTab;
         BottomPullTabButton settingsBottomTab;
         ViewMode viewMode = ViewMode.MAIN;
+        final List<SettingRow> settingsRows = new ArrayList<>();
+        int settingsScroll = 0;
 
         State(InventoryScreen inv) {
             this.inv = inv;
@@ -530,4 +643,6 @@ public final class SkillsPanelClient {
         PLAYER,
         SETTINGS
     }
+
+    private record SettingRow(String label, Supplier<String> state, Runnable onClick) {}
 }

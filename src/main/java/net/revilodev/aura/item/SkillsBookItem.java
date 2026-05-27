@@ -7,6 +7,7 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
+import net.revilodev.aura.client.screen.StandaloneSkillsBookScreen;
 import net.revilodev.aura.skills.SkillsNetwork;
 
 public final class SkillsBookItem extends Item {
@@ -17,6 +18,9 @@ public final class SkillsBookItem extends Item {
 
     @Override
     public InteractionResultHolder<ItemStack> use(Level level, Player player, InteractionHand hand) {
+        if (level.isClientSide) {
+            net.minecraft.client.Minecraft.getInstance().setScreen(new StandaloneSkillsBookScreen());
+        }
         if (!level.isClientSide && player instanceof ServerPlayer sp) {
             SkillsNetwork.sendOpenSkillsBook(sp);
         }
