@@ -12,6 +12,7 @@ import net.neoforged.api.distmarker.Dist;
 import net.neoforged.api.distmarker.OnlyIn;
 import net.neoforged.neoforge.network.PacketDistributor;
 import net.revilodev.aura.CodexMod;
+import net.revilodev.aura.client.AuraClientConfig;
 import net.revilodev.aura.skills.PlayerSkills;
 import net.revilodev.aura.skills.SkillBalance;
 import net.revilodev.aura.skills.SkillDefinition;
@@ -118,10 +119,10 @@ public final class SkillDetailsPanel extends AbstractWidget {
         PlayerSkills ps = mc.player.getData(SkillsAttachments.PLAYER_SKILLS.get());
         int level = ps.level(skill.id());
         boolean unlocked = ps.canUnlock(skill.id());
-        boolean canUp = unlocked
+        boolean canUp = !AuraClientConfig.blockUpgradeDowngrade() && unlocked
                 && level < skill.maxLevel()
                 && ps.points() > 0;
-        boolean canDown = ps.canDowngrade(skill.id());
+        boolean canDown = !AuraClientConfig.blockUpgradeDowngrade() && ps.canDowngrade(skill.id());
         gg.blit(skill.icon(), x + 4, y + 4, 0, 0, HEADER_ICON_SIZE, HEADER_ICON_SIZE, HEADER_ICON_SIZE, HEADER_ICON_SIZE);
         drawScaledText(gg, skill.title(), x + 18, y + 5, 0xFFFFFF, HEADER_TEXT_SCALE);
         drawScaledText(gg, "level: " + level + "/" + skill.maxLevel(), x + 18, y + 11, 0xD0D0D0, HEADER_TEXT_SCALE);
@@ -239,7 +240,7 @@ public final class SkillDetailsPanel extends AbstractWidget {
 
         @Override
         public void onPress() {
-            if (!active || skill == null) return;
+            if (!active || skill == null || AuraClientConfig.blockUpgradeDowngrade()) return;
             PacketDistributor.sendToServer(new SkillsNetwork.SkillActionPayload(skill.id().ordinal(), true));
         }
 
@@ -264,7 +265,7 @@ public final class SkillDetailsPanel extends AbstractWidget {
 
         @Override
         public void onPress() {
-            if (!active || skill == null) return;
+            if (!active || skill == null || AuraClientConfig.blockUpgradeDowngrade()) return;
             PacketDistributor.sendToServer(new SkillsNetwork.SkillActionPayload(skill.id().ordinal(), false));
         }
 

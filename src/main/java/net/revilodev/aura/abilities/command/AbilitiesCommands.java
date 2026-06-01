@@ -45,7 +45,8 @@ public final class AbilitiesCommands {
                                     PlayerAbilities data = player.getData(AbilitiesAttachments.PLAYER_ABILITIES.get());
                                     data.addPoints(amount);
                                     AbilitiesNetwork.syncTo(player);
-                                    return success(ctx.getSource(), "Added " + amount + " ability points.");
+                                    ctx.getSource().sendSuccess(() -> Component.translatable("command.aura.abilities.points_add.success", amount), true);
+                                    return 1;
                                 })))
                 .then(Commands.literal("set")
                         .then(Commands.argument("amount", IntegerArgumentType.integer(0))
@@ -55,7 +56,8 @@ public final class AbilitiesCommands {
                                     PlayerAbilities data = player.getData(AbilitiesAttachments.PLAYER_ABILITIES.get());
                                     data.setPoints(amount);
                                     AbilitiesNetwork.syncTo(player);
-                                    return success(ctx.getSource(), "Set ability points to " + amount + ".");
+                                    ctx.getSource().sendSuccess(() -> Component.translatable("command.aura.abilities.points_set.success", amount), true);
+                                    return 1;
                                 })))
                 .then(Commands.literal("reset")
                         .executes(ctx -> {
@@ -63,7 +65,8 @@ public final class AbilitiesCommands {
                             PlayerAbilities data = player.getData(AbilitiesAttachments.PLAYER_ABILITIES.get());
                             data.setPoints(0);
                             AbilitiesNetwork.syncTo(player);
-                            return success(ctx.getSource(), "Reset ability points.");
+                            ctx.getSource().sendSuccess(() -> Component.translatable("command.aura.abilities.points_reset.success"), true);
+                            return 1;
                         })));
 
         root.then(Commands.literal("unlock")
@@ -71,11 +74,15 @@ public final class AbilitiesCommands {
                         .executes(ctx -> {
                             ServerPlayer player = ctx.getSource().getPlayerOrException();
                             AbilityId id = parseAbility(StringArgumentType.getString(ctx, "ability"));
-                            if (id == null) return failure(ctx.getSource(), "Unknown ability.");
+                            if (id == null) {
+                                ctx.getSource().sendFailure(Component.translatable("command.aura.abilities.error.unknown_ability"));
+                                return 0;
+                            }
                             PlayerAbilities data = player.getData(AbilitiesAttachments.PLAYER_ABILITIES.get());
                             data.setRank(id, Math.max(1, data.rank(id)));
                             AbilitiesNetwork.syncTo(player);
-                            return success(ctx.getSource(), "Unlocked " + id.name() + ".");
+                            ctx.getSource().sendSuccess(() -> Component.translatable("command.aura.abilities.unlock.success", id.title()), true);
+                            return 1;
                         })));
 
         root.then(Commands.literal("reset")
@@ -84,7 +91,8 @@ public final class AbilitiesCommands {
                     PlayerAbilities data = player.getData(AbilitiesAttachments.PLAYER_ABILITIES.get());
                     data.adminReset();
                     AbilitiesNetwork.syncTo(player);
-                    return success(ctx.getSource(), "Reset abilities, cooldowns, recent HUD history, and points.");
+                    ctx.getSource().sendSuccess(() -> Component.translatable("command.aura.abilities.reset_all.success"), true);
+                    return 1;
                 }));
 
         dispatcher.register(root);
@@ -98,13 +106,4 @@ public final class AbilitiesCommands {
         }
     }
 
-    private static int success(CommandSourceStack source, String message) {
-        source.sendSuccess(() -> Component.literal(message), true);
-        return 1;
-    }
-
-    private static int failure(CommandSourceStack source, String message) {
-        source.sendFailure(Component.literal(message));
-        return 0;
-    }
 }

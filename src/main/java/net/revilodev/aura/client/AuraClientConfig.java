@@ -19,6 +19,9 @@ public final class AuraClientConfig {
     private static boolean disableInventoryCodexBook = false;
     private static AbilityConfig.HudPosition hudPosition = AbilityConfig.HudPosition.BOTTOM_LEFT;
     private static boolean disableSkillsAndAbilities = false;
+    private static boolean blockAbilitySwitching = false;
+    private static boolean blockUpgradeDowngrade = false;
+    private static boolean blockOpenSkillsAbilitiesPanel = false;
 
     private AuraClientConfig() {}
 
@@ -34,6 +37,9 @@ public final class AuraClientConfig {
             disableCodexBook = getBoolean(root, "disableCodexBook", false);
             disableInventoryCodexBook = getBoolean(root, "disableInventoryCodexBook", false);
             disableSkillsAndAbilities = getBoolean(root, "disableSkillsAndAbilities", false);
+            blockAbilitySwitching = getBoolean(root, "blockAbilitySwitching", false);
+            blockUpgradeDowngrade = getBoolean(root, "blockUpgradeDowngrade", false);
+            blockOpenSkillsAbilitiesPanel = getBoolean(root, "blockOpenSkillsAbilitiesPanel", false);
             String pos = root.has("hudPosition") ? root.get("hudPosition").getAsString() : "bottom-left";
             AbilityConfig.HudPosition parsed = AbilityConfig.HudPosition.fromConfig(pos);
             hudPosition = parsed == null ? AbilityConfig.HudPosition.BOTTOM_LEFT : parsed;
@@ -48,6 +54,9 @@ public final class AuraClientConfig {
             root.addProperty("disableCodexBook", disableCodexBook);
             root.addProperty("disableInventoryCodexBook", disableInventoryCodexBook);
             root.addProperty("disableSkillsAndAbilities", disableSkillsAndAbilities);
+            root.addProperty("blockAbilitySwitching", blockAbilitySwitching);
+            root.addProperty("blockUpgradeDowngrade", blockUpgradeDowngrade);
+            root.addProperty("blockOpenSkillsAbilitiesPanel", blockOpenSkillsAbilitiesPanel);
             root.addProperty("hudPosition", hudPosition.name().toLowerCase(java.util.Locale.ROOT).replace('_', '-'));
             Files.writeString(FILE, GSON.toJson(root));
         } catch (IOException ignored) {}
@@ -100,6 +109,33 @@ public final class AuraClientConfig {
 
     public static void toggleDisableSkillsAndAbilities() {
         disableSkillsAndAbilities = !disableSkillsAndAbilities;
+        save();
+    }
+
+    public static boolean blockAbilitySwitching() {
+        return blockAbilitySwitching;
+    }
+
+    public static void toggleBlockAbilitySwitching() {
+        blockAbilitySwitching = !blockAbilitySwitching;
+        save();
+    }
+
+    public static boolean blockUpgradeDowngrade() {
+        return blockUpgradeDowngrade;
+    }
+
+    public static void toggleBlockUpgradeDowngrade() {
+        blockUpgradeDowngrade = !blockUpgradeDowngrade;
+        save();
+    }
+
+    public static boolean blockOpenSkillsAbilitiesPanel() {
+        return blockOpenSkillsAbilitiesPanel;
+    }
+
+    public static void toggleBlockOpenSkillsAbilitiesPanel() {
+        blockOpenSkillsAbilitiesPanel = !blockOpenSkillsAbilitiesPanel;
         save();
     }
 

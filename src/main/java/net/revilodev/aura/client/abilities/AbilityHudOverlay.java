@@ -4,9 +4,11 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.resources.ResourceLocation;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.api.distmarker.OnlyIn;
 import net.neoforged.neoforge.client.event.RenderGuiEvent;
+import net.revilodev.aura.CodexMod;
 import net.revilodev.aura.abilities.AbilitiesAttachments;
 import net.revilodev.aura.abilities.AbilityConfig;
 import net.revilodev.aura.abilities.AbilityDefinition;
@@ -27,7 +29,15 @@ import java.util.Map;
 @OnlyIn(Dist.CLIENT)
 public final class AbilityHudOverlay {
     private static final int SLOT_SIZE = 20;
-    private static final int SLOT_STEP = 22;
+    private static final int SLOT_STEP = 20;
+    private static final int BAR_HEIGHT = 22;
+    private static final int BAR_FULL_WIDTH = 82;
+    private static final int SELECTOR_WIDTH = 24;
+    private static final int SELECTOR_HEIGHT = 23;
+    private static final ResourceLocation ABILITY_BAR_TEX =
+            ResourceLocation.fromNamespaceAndPath(CodexMod.MOD_ID, "textures/gui/hud/abilitybar.png");
+    private static final ResourceLocation ABILITY_BAR_SELECTOR_TEX =
+            ResourceLocation.fromNamespaceAndPath(CodexMod.MOD_ID, "textures/gui/hud/abilitybar-selector.png");
     private static final int GRID_COLUMNS = 4;
     private static final int GRID_ROWS = 2;
     private static final long FAIL_FLASH_MS = 350L;
@@ -58,8 +68,8 @@ public final class AbilityHudOverlay {
 
         int columns = showGrid ? Math.min(GRID_COLUMNS, displayed.size()) : displayed.size();
         int rows = showGrid ? Math.min(GRID_ROWS, (int) Math.ceil(displayed.size() / (double) GRID_COLUMNS)) : 1;
-        int contentWidth = SLOT_SIZE + (Math.max(0, columns - 1) * SLOT_STEP);
-        int contentHeight = SLOT_SIZE + (Math.max(0, rows - 1) * SLOT_STEP);
+        int contentWidth = showGrid ? (SLOT_SIZE + (Math.max(0, columns - 1) * SLOT_STEP)) : (2 + columns * SLOT_STEP);
+        int contentHeight = showGrid ? (SLOT_SIZE + (Math.max(0, rows - 1) * SLOT_STEP)) : BAR_HEIGHT;
         Origin origin = resolveOrigin(gg, contentWidth, contentHeight, AuraClientConfig.hudPosition());
 
         if (showGrid) {
@@ -67,11 +77,18 @@ public final class AbilityHudOverlay {
             for (int i = 0; i < max; i++) {
                 int col = i % GRID_COLUMNS;
                 int row = i / GRID_COLUMNS;
-                drawAbility(gg, mc.font, origin.x + col * SLOT_STEP, origin.y + row * SLOT_STEP, displayed.get(i), abilities, skills, displayed.get(i) == AbilityKeybinds.altSelection());
+                drawAbility(gg, mc.font, origin.x + col * SLOT_STEP, origin.y + row * SLOT_STEP, displayed.get(i), abilities, skills, displayed.get(i) == AbilityKeybinds.altSelection(), true);
             }
         } else {
+            int barWidth = Math.min(BAR_FULL_WIDTH, 2 + displayed.size() * SLOT_STEP);
+            gg.blit(ABILITY_BAR_TEX, origin.x, origin.y, 0, 0, barWidth, BAR_HEIGHT, BAR_FULL_WIDTH, BAR_HEIGHT);
             for (int i = 0; i < displayed.size(); i++) {
-                drawAbility(gg, mc.font, origin.x + i * SLOT_STEP, origin.y, displayed.get(i), abilities, skills, false);
+                int slotX = origin.x + 1 + i * SLOT_STEP;
+                int slotY = origin.y + 1;
+                drawAbility(gg, mc.font, slotX, slotY, displayed.get(i), abilities, skills, false, false);
+                if (displayed.get(i) == AbilityKeybinds.altSelection()) {
+                    gg.blit(ABILITY_BAR_SELECTOR_TEX, slotX - 2, slotY - 2, 0, 0, SELECTOR_WIDTH, SELECTOR_HEIGHT, SELECTOR_WIDTH, SELECTOR_HEIGHT);
+                }
             }
         }
     }
@@ -108,7 +125,7 @@ public final class AbilityHudOverlay {
         return new Origin(x, y);
     }
 
-    private static void drawAbility(GuiGraphics gg, Font font, int x, int y, AbilityId id, PlayerAbilities abilities, PlayerSkills skills, boolean selected) {
+    private static void drawAbility(GuiGraphics gg, Font font, int x, int y, AbilityId id, PlayerAbilities abilities, PlayerSkills skills, boolean selected, boolean drawFrame) {
         if (id == null) return;
         FailureState failure = activeFailure(id);
         int shakeX = 0;
@@ -118,14 +135,15 @@ public final class AbilityHudOverlay {
             shakeX = (int) Math.round(Math.sin(progress * Math.PI * 4.0D) * 1.5D * progress);
         }
         int drawX = x + shakeX;
-        int borderColor = selected ? 0xFFB67CFF : 0x80383838;
-        int fillColor = failure != null ? 0xC0321212 : 0xB0101010;
-
-        gg.fill(drawX, y, drawX + SLOT_SIZE, y + SLOT_SIZE, fillColor);
-        gg.fill(drawX - 1, y - 1, drawX + SLOT_SIZE + 1, y, borderColor);
-        gg.fill(drawX - 1, y + SLOT_SIZE, drawX + SLOT_SIZE + 1, y + SLOT_SIZE + 1, borderColor);
-        gg.fill(drawX - 1, y, drawX, y + SLOT_SIZE, borderColor);
-        gg.fill(drawX + SLOT_SIZE, y, drawX + SLOT_SIZE + 1, y + SLOT_SIZE, borderColor);
+        if (drawFrame) {
+            int borderColor = selected ? 0xFFB67CFF : 0x80383838;
+            int fillColor = failure != null ? 0xC0321212 : 0xB0101010;
+            gg.fill(drawX, y, drawX + SLOT_SIZE, y + SLOT_SIZE, fillColor);
+            gg.fill(drawX - 1, y - 1, drawX + SLOT_SIZE + 1, y, borderColor);
+            gg.fill(drawX - 1, y + SLOT_SIZE, drawX + SLOT_SIZE + 1, y + SLOT_SIZE + 1, borderColor);
+            gg.fill(drawX - 1, y, drawX, y + SLOT_SIZE, borderColor);
+            gg.fill(drawX + SLOT_SIZE, y, drawX + SLOT_SIZE + 1, y + SLOT_SIZE, borderColor);
+        }
 
         AbilityDefinition def = AbilityRegistry.def(id);
         if (def != null) gg.blit(def.iconTexture(), drawX + 2, y + 2, 0, 0, 16, 16, 16, 16);

@@ -52,14 +52,14 @@ public final class SkillPointToast implements Toast {
         toasts.addToast(new SkillPointToast(
                 category,
                 delta,
-                Component.literal("Skill point earned"),
-                Component.literal(category.title() + " " + deltaText),
+                Component.translatable("toast.aura.skill_point_earned"),
+                Component.translatable("toast.aura.skill_point_category_delta", category.title(), deltaText),
                 category.icon()
         ));
     }
 
     public static void showGlobal(int delta, int total) {
-        showGlobal(delta, total, Component.literal("Skill point earned"));
+        showGlobal(delta, total, Component.translatable("toast.aura.skill_point_earned"));
     }
 
     public static void showGlobal(int delta, int total, Component title) {
@@ -78,7 +78,7 @@ public final class SkillPointToast implements Toast {
                 SkillCategory.STRENGTH,
                 delta,
                 title,
-                Component.literal(deltaText),
+                Component.translatable("toast.aura.skill_point_delta", deltaText),
                 SkillCategory.STRENGTH.icon()
         ));
     }
@@ -108,8 +108,8 @@ public final class SkillPointToast implements Toast {
         points += delta;
         String deltaText = points == 1 ? "+1" : ("+" + points);
         subtitle = token == GLOBAL_TOKEN
-                ? Component.literal(deltaText)
-                : Component.literal(category.title() + " " + deltaText);
+                ? Component.translatable("toast.aura.skill_point_delta", deltaText)
+                : Component.translatable("toast.aura.skill_point_category_delta", category.title(), deltaText);
         changed = true;
     }
 }

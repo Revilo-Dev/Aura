@@ -35,6 +35,7 @@ public final class SkillsBookKeybinds {
     private static void onClientTick(ClientTickEvent.Post event) {
         Minecraft mc = Minecraft.getInstance();
         if (mc.player == null) return;
+        if (AuraClientConfig.blockOpenSkillsAbilitiesPanel()) return;
         boolean pressed = false;
         while (OPEN_BOOK.consumeClick()) {
             pressed = true;

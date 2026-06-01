@@ -31,10 +31,10 @@ public final class LevelUpToast {
         Minecraft mc = Minecraft.getInstance();
         if (mc == null) return;
 
-        title = Component.literal("Leveled Up " + oldLevel + " -> " + newLevel);
-        skillLine = Component.literal("+" + Math.max(0, skillPointsGained) + " skill point");
+        title = Component.translatable("toast.aura.level_up_levels", oldLevel, newLevel);
+        skillLine = Component.translatable("toast.aura.level_up_skill_points", Math.max(0, skillPointsGained));
         abilityLine = abilityPointsGained > 0
-                ? Component.literal(" | +" + abilityPointsGained + " Ability point")
+                ? Component.translatable("toast.aura.level_up_ability_points", abilityPointsGained)
                 : Component.empty();
         shownAt = Util.getMillis();
     }

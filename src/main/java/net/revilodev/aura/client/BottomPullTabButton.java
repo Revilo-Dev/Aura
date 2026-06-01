@@ -12,7 +12,7 @@ import net.neoforged.api.distmarker.OnlyIn;
 public final class BottomPullTabButton extends AbstractButton {
     private static final int TAB_WIDTH = 32;
     private static final int NORMAL_HEIGHT = 32;
-    private static final int PULLED_HEIGHT = 35;
+    private static final int SELECTED_HEIGHT = 35;
     private final ResourceLocation baseTexture;
     private final ResourceLocation pulledTexture;
     private final ResourceLocation selectedTexture;
@@ -38,23 +38,16 @@ public final class BottomPullTabButton extends AbstractButton {
 
     @Override
     protected void renderWidget(GuiGraphics gg, int mouseX, int mouseY, float partialTick) {
-        ResourceLocation texture;
-        int drawY = getY();
-        int drawH = NORMAL_HEIGHT;
+        ResourceLocation texture = baseTexture;
         int texH = NORMAL_HEIGHT;
-        if (selected) {
-            texture = selectedTexture != null ? selectedTexture : pulledTexture;
-            drawY -= 2;
-            drawH = PULLED_HEIGHT;
-            texH = PULLED_HEIGHT;
+        if (selected && selectedTexture != null) {
+            texture = selectedTexture;
+            texH = SELECTED_HEIGHT;
         } else if (isHovered()) {
-            texture = baseTexture;
-            drawY -= 2;
-            drawH = NORMAL_HEIGHT;
-            texH = NORMAL_HEIGHT;
-        } else {
-            texture = baseTexture;
+            texture = pulledTexture != null ? pulledTexture : baseTexture;
         }
+        int drawY = getY() - Math.max(0, texH - NORMAL_HEIGHT);
+        int drawH = texH;
         gg.blit(texture, getX(), drawY, 0, 0, width, drawH, width, texH);
     }
 

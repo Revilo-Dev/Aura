@@ -13,6 +13,7 @@ import net.neoforged.api.distmarker.Dist;
 import net.neoforged.api.distmarker.OnlyIn;
 import net.neoforged.neoforge.network.PacketDistributor;
 import net.revilodev.aura.CodexMod;
+import net.revilodev.aura.client.AuraClientConfig;
 import net.revilodev.aura.abilities.AbilitiesAttachments;
 import net.revilodev.aura.abilities.AbilitiesNetwork;
 import net.revilodev.aura.abilities.AbilityDefinition;
@@ -131,8 +132,8 @@ public final class AbilityDetailsPanel extends AbstractWidget {
         int displayLevel = ability.type() == net.revilodev.aura.abilities.AbilityNodeType.SPECIALIZATION
                 ? abilities.rank(ability.id().core())
                 : level;
-        boolean canUp = abilities.canUpgrade(ability.id());
-        boolean canDown = abilities.canDowngrade(ability.id());
+        boolean canUp = !AuraClientConfig.blockUpgradeDowngrade() && abilities.canUpgrade(ability.id());
+        boolean canDown = !AuraClientConfig.blockUpgradeDowngrade() && abilities.canDowngrade(ability.id());
         boolean specialization = ability.type() == net.revilodev.aura.abilities.AbilityNodeType.SPECIALIZATION;
 
         gg.blit(ability.iconTexture(), x + 3, y + 4, 0, 0, HEADER_ICON_SIZE, HEADER_ICON_SIZE, HEADER_ICON_SIZE, HEADER_ICON_SIZE);
@@ -184,7 +185,7 @@ public final class AbilityDetailsPanel extends AbstractWidget {
         upgrade.visible = !specialization;
         downgrade.visible = !specialization;
         select.visible = specialization;
-        select.active = specialization;
+        select.active = specialization && !AuraClientConfig.blockAbilitySwitching();
     }
 
     @Override
@@ -360,7 +361,7 @@ public final class AbilityDetailsPanel extends AbstractWidget {
 
         @Override
         public void onPress() {
-            if (!active || ability == null) return;
+            if (!active || ability == null || AuraClientConfig.blockUpgradeDowngrade()) return;
             PacketDistributor.sendToServer(new AbilitiesNetwork.AbilityActionPayload(0, ability.id().ordinal()));
         }
 
@@ -380,7 +381,7 @@ public final class AbilityDetailsPanel extends AbstractWidget {
 
         @Override
         public void onPress() {
-            if (!active || ability == null) return;
+            if (!active || ability == null || AuraClientConfig.blockUpgradeDowngrade()) return;
             PacketDistributor.sendToServer(new AbilitiesNetwork.AbilityActionPayload(1, ability.id().ordinal()));
         }
 
@@ -400,7 +401,7 @@ public final class AbilityDetailsPanel extends AbstractWidget {
 
         @Override
         public void onPress() {
-            if (!active || ability == null) return;
+            if (!active || ability == null || AuraClientConfig.blockAbilitySwitching()) return;
             PacketDistributor.sendToServer(new AbilitiesNetwork.AbilityActionPayload(2, ability.id().ordinal()));
         }
 

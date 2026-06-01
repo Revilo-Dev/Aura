@@ -91,6 +91,15 @@ The mod integrates with **LevelUP** for progression rewards.
 - Standalone Aura Book screen (`StandaloneSkillsBookScreen`).
 - Ability and skill detail panels with stat lines and contextual tooltips.
 - Ability tooltip stat model supports per-ability metric overrides (not only default DPS/duration).
+- LevelUP values screen (`LevelUpConfigScreen`) for client/common LevelUP tuning, HUD offsets, and HUD color.
+
+---
+
+## Aura Client Locks (`aura-client.json`)
+
+- `blockAbilitySwitching` (default `false`): prevents selecting/changing active abilities in the UI.
+- `blockUpgradeDowngrade` (default `false`): prevents skill/ability rank upgrades and downgrades in the UI.
+- `blockOpenSkillsAbilitiesPanel` (default `false`): prevents opening the inventory/standalone Skills & Abilities panel.
 
 ---
 

@@ -49,7 +49,7 @@ public final class SkillsCommands {
                                             SkillId id = parseSkill(StringArgumentType.getString(ctx, "skill"));
                                             int amt = IntegerArgumentType.getInteger(ctx, "amount");
                                             if (id == null) {
-                                                ctx.getSource().sendFailure(Component.literal("Unknown skill."));
+                                                ctx.getSource().sendFailure(Component.translatable("command.aura.skills.error.unknown_skill"));
                                                 return 0;
                                             }
                                             PlayerSkills data = sp.getData(SkillsAttachments.PLAYER_SKILLS.get());
@@ -57,7 +57,7 @@ public final class SkillsCommands {
                                             int after = data.adminAddLevel(id, amt);
                                             SkillLogic.applyAllEffects(sp, data);
                                             SkillsNetwork.syncTo(sp);
-                                            ctx.getSource().sendSuccess(() -> Component.literal(id.name() + " " + before + " -> " + after), true);
+                                            ctx.getSource().sendSuccess(() -> Component.translatable("command.aura.skills.level_up.success", id.title(), before, after), true);
                                             return 1;
                                         })))));
 
@@ -70,7 +70,7 @@ public final class SkillsCommands {
                                     PlayerSkills data = sp.getData(SkillsAttachments.PLAYER_SKILLS.get());
                                     data.adminAddPoints(amt);
                                     SkillsNetwork.syncTo(sp);
-                                    ctx.getSource().sendSuccess(() -> Component.literal("Added " + amt + " skill points."), true);
+                                    ctx.getSource().sendSuccess(() -> Component.translatable("command.aura.skills.points_add.success", amt), true);
                                     return 1;
                                 })))
                 .then(Commands.literal("set")
@@ -81,7 +81,7 @@ public final class SkillsCommands {
                                     PlayerSkills data = sp.getData(SkillsAttachments.PLAYER_SKILLS.get());
                                     data.adminSetPoints(amt);
                                     SkillsNetwork.syncTo(sp);
-                                    ctx.getSource().sendSuccess(() -> Component.literal("Set skill points to " + amt + "."), true);
+                                    ctx.getSource().sendSuccess(() -> Component.translatable("command.aura.skills.points_set.success", amt), true);
                                     return 1;
                                 })))
                 .then(Commands.literal("reset")
@@ -90,7 +90,7 @@ public final class SkillsCommands {
                             PlayerSkills data = sp.getData(SkillsAttachments.PLAYER_SKILLS.get());
                             data.adminResetPoints();
                             SkillsNetwork.syncTo(sp);
-                            ctx.getSource().sendSuccess(() -> Component.literal("Reset skill points."), true);
+                            ctx.getSource().sendSuccess(() -> Component.translatable("command.aura.skills.points_reset.success"), true);
                             return 1;
                         })));
 
@@ -101,7 +101,7 @@ public final class SkillsCommands {
                     data.adminResetAll();
                     SkillLogic.applyAllEffects(sp, data);
                     SkillsNetwork.syncTo(sp);
-                    ctx.getSource().sendSuccess(() -> Component.literal("Reset all skills and points."), true);
+                    ctx.getSource().sendSuccess(() -> Component.translatable("command.aura.skills.reset_all.success"), true);
                     return 1;
                 }));
 

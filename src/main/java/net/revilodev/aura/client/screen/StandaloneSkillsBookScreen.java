@@ -1,5 +1,6 @@
 package net.revilodev.aura.client.screen;
 
+import com.revilo.levelup.api.LevelUpApi;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
@@ -23,9 +24,13 @@ import net.revilodev.aura.client.skills.SkillDetailsPanel;
 import net.revilodev.aura.client.skills.SkillListWidget;
 import net.revilodev.aura.client.skills.SkillPanelHeaderRenderer;
 import net.revilodev.aura.abilities.AbilityElement;
+import net.revilodev.aura.abilities.AbilityDefinition;
 import net.revilodev.aura.abilities.AbilityId;
+import net.revilodev.aura.abilities.AbilityRegistry;
 import net.revilodev.aura.skills.SkillBalance;
+import net.revilodev.aura.skills.SkillDefinition;
 import net.revilodev.aura.skills.SkillId;
+import net.revilodev.aura.skills.SkillRegistry;
 import net.revilodev.aura.skills.SkillsAttachments;
 
 import java.util.ArrayList;
@@ -46,7 +51,7 @@ public final class StandaloneSkillsBookScreen extends Screen {
     private static final ResourceLocation SETTINGS_TAB_TEX_PULLED =
             ResourceLocation.fromNamespaceAndPath(CodexMod.MOD_ID, "textures/gui/sprites/pull-tab-settings-pulled.png");
     private static final ResourceLocation SETTINGS_TAB_TEX_PULLED_ALT =
-            ResourceLocation.fromNamespaceAndPath(CodexMod.MOD_ID, "textures/gui/sprites/pull-tab-settings_pulled.png");
+            ResourceLocation.fromNamespaceAndPath(CodexMod.MOD_ID, "textures/gui/sprites/pull-tab-settings-selected.png");
 
     private final int panelWidth = 147;
     private final int panelHeight = 166;
@@ -125,7 +130,7 @@ public final class StandaloneSkillsBookScreen extends Screen {
         int bottomY = panelY + panelHeight - 3;
         int bottomX = panelX + 7;
         playerBottomTab = new BottomPullTabButton(bottomX, bottomY, Component.translatable("gui.aura.player"), PLAYER_TAB_TEX, PLAYER_TAB_TEX_PULLED, PLAYER_TAB_TEX_SELECTED, () -> setViewMode(ViewMode.PLAYER));
-        settingsBottomTab = new BottomPullTabButton(bottomX + 32 + 2, bottomY, Component.translatable("gui.aura.settings"), SETTINGS_TAB_TEX, SETTINGS_TAB_TEX_PULLED_ALT, SETTINGS_TAB_TEX_PULLED_ALT, () -> setViewMode(ViewMode.SETTINGS));
+        settingsBottomTab = new BottomPullTabButton(bottomX + 32 + 2, bottomY, Component.translatable("gui.aura.settings"), SETTINGS_TAB_TEX, SETTINGS_TAB_TEX_PULLED, SETTINGS_TAB_TEX_PULLED_ALT, () -> setViewMode(ViewMode.SETTINGS));
         playerBottomTab.setPosition(bottomX - 3, bottomY);
         settingsBottomTab.setPosition((bottomX - 3) + 32 + 2, bottomY);
 
@@ -154,6 +159,10 @@ public final class StandaloneSkillsBookScreen extends Screen {
         settingsRows.add(new SettingRow(Component.translatable("gui.aura.settings.disable_inventory_book").getString(), () -> boolState(AuraClientConfig.disableInventoryCodexBook()), AuraClientConfig::toggleDisableInventoryCodexBook));
         settingsRows.add(new SettingRow(Component.translatable("gui.aura.settings.reposition_hud").getString(), () -> Component.translatable("gui.aura.hud_position." + AuraClientConfig.hudPosition().name().toLowerCase(java.util.Locale.ROOT)).getString(), AuraClientConfig::cycleHudPosition));
         settingsRows.add(new SettingRow(Component.translatable("gui.aura.settings.disable_skills_abilities").getString(), () -> boolState(AuraClientConfig.disableSkillsAndAbilities()), AuraClientConfig::toggleDisableSkillsAndAbilities));
+        settingsRows.add(new SettingRow(Component.translatable("gui.aura.settings.block_ability_switching").getString(), () -> boolState(AuraClientConfig.blockAbilitySwitching()), AuraClientConfig::toggleBlockAbilitySwitching));
+        settingsRows.add(new SettingRow(Component.translatable("gui.aura.settings.block_upgrade_downgrade").getString(), () -> boolState(AuraClientConfig.blockUpgradeDowngrade()), AuraClientConfig::toggleBlockUpgradeDowngrade));
+        settingsRows.add(new SettingRow(Component.translatable("gui.aura.settings.block_open_panel").getString(), () -> boolState(AuraClientConfig.blockOpenSkillsAbilitiesPanel()), AuraClientConfig::toggleBlockOpenSkillsAbilitiesPanel));
+        settingsRows.add(new SettingRow(Component.translatable("gui.aura.settings.levelup_values").getString(), () -> Component.translatable("gui.aura.open").getString(), () -> minecraft.setScreen(new LevelUpConfigScreen(this))));
         settingsRows.add(new SettingRow(Component.translatable("gui.aura.settings.disabled_skills_abilities").getString(), () -> Component.translatable("gui.aura.open").getString(), () -> minecraft.setScreen(new DisabledSkillsAbilitiesScreen(this))));
     }
 
@@ -411,13 +420,32 @@ public final class StandaloneSkillsBookScreen extends Screen {
         gg.pose().popPose();
     }
 
+    private void drawHoverStat(GuiGraphics gg, int mouseX, int mouseY, int baseX, int baseY, String text, int color, float scale, int yOffset) {
+        int y = baseY + yOffset;
+        int w = (int) (font.width(text) * scale);
+        boolean hovered = mouseX >= baseX && mouseX <= baseX + w + 2 && mouseY >= y && mouseY <= y + 7;
+        drawScaledText(gg, text, baseX, y, color, hovered ? scale * 1.05F : scale);
+    }
+
+    private Component tooltipIfHovered(Component currentTooltip, int mouseX, int mouseY, int x, int y, String text, float scale) {
+        if (currentTooltip != null) return currentTooltip;
+        int w = (int) (font.width(text) * scale);
+        int h = Math.max(6, (int) (font.lineHeight * scale));
+        if (mouseX >= x && mouseX <= x + w + 2 && mouseY >= y && mouseY <= y + h) return Component.literal(text);
+        return null;
+    }
+
     private void renderPlayerView(GuiGraphics gg, int mouseX, int mouseY) {
         if (minecraft == null || minecraft.player == null) return;
+        Component hoveredTooltip = null;
 
-        int dollX = panelX + 30;
-        int dollY = panelY + panelHeight - 18;
+        int dollX = panelX + 35;
+        int dollY = panelY + panelHeight - 22;
         int dollSize = 36;
+        gg.pose().pushPose();
+        gg.pose().translate(0.0F, 0.0F, 1000.0F);
         InventoryScreen.renderEntityInInventoryFollowsMouse(gg, dollX, dollY, dollSize, dollX - mouseX, dollY - 26 - mouseY, 30.0F, 0.0F, 0.0F, minecraft.player);
+        gg.pose().popPose();
 
         var player = minecraft.player;
         var playerAbilities = player.getData(AbilitiesAttachments.PLAYER_ABILITIES.get());
@@ -426,28 +454,99 @@ public final class StandaloneSkillsBookScreen extends Screen {
         double critPower = 1.5D + SkillBalance.critPowerDamage(skills.level(SkillId.CRIT_POWER));
         double abilityPower = CodexAttributes.baseAbilityPower(player);
         int defence = player.getArmorValue();
+        double speed = player.getAttributeValue(Attributes.MOVEMENT_SPEED);
+        double maxHealth = player.getMaxHealth();
+        int luckLevel = skills.level(SkillId.LUCK);
+        double leechChance = skills.level(SkillId.HEALTH_BOOST) > 0 ? SkillBalance.lifeLeach(luckLevel) * 100.0D : 0.0D;
 
-        int textX = panelX + 58;
-        int textY = panelY + 28;
+        int textX = panelX + 11;
+        int textY = panelY + 18;
         int lineH = 9;
         float scale = 0.65F;
-        drawScaledText(gg, Component.translatable("gui.aura.player.level", player.experienceLevel).getString(), panelX + 8, panelY + 10, 0xFFE08A, 0.75F);
-        drawScaledText(gg, Component.translatable("gui.aura.player.base_damage", fmt(baseDamage)).getString(), textX, textY, 0xFF8080, scale);
-        drawScaledText(gg, Component.translatable("gui.aura.player.crit_power", fmt(critPower) + "x").getString(), textX, textY + lineH, 0xFFD580, scale);
-        drawScaledText(gg, Component.translatable("gui.aura.player.ability_power", fmt(abilityPower)).getString(), textX, textY + (lineH * 2), 0xC78CFF, scale);
-        drawScaledText(gg, Component.translatable("gui.aura.player.defence", defence).getString(), textX, textY + (lineH * 3), 0x8CD3FF, scale);
+        String levelText = Component.translatable("gui.aura.player.level", LevelUpApi.getLevel(player)).getString();
+        drawScaledText(gg, levelText, panelX + 14, panelY + 10, 0xFFE08A, 0.75F);
+        hoveredTooltip = tooltipIfHovered(hoveredTooltip, mouseX, mouseY, panelX + 14, panelY + 10, levelText, 0.75F);
+        String stat0 = Component.translatable("gui.aura.player.base_damage", fmt(baseDamage)).getString();
+        String stat1 = Component.translatable("gui.aura.player.crit_power", fmt(critPower) + "x").getString();
+        String stat2 = Component.translatable("gui.aura.player.ability_power", fmt(abilityPower)).getString();
+        String stat3 = Component.translatable("gui.aura.player.defence", defence).getString();
+        String stat4 = Component.translatable("gui.aura.player.speed", fmt(speed)).getString();
+        String stat5 = Component.translatable("gui.aura.player.leeching", fmt(leechChance) + "%").getString();
+        String stat6 = Component.translatable("gui.aura.player.health", fmt(maxHealth)).getString();
+        drawHoverStat(gg, mouseX, mouseY, textX, textY, stat0, 0xFF8080, scale, lineH * 0);
+        drawHoverStat(gg, mouseX, mouseY, textX, textY, stat1, 0xFFD580, scale, lineH * 1);
+        drawHoverStat(gg, mouseX, mouseY, textX, textY, stat2, 0xC78CFF, scale, lineH * 2);
+        drawHoverStat(gg, mouseX, mouseY, textX, textY, stat3, 0x8CD3FF, scale, lineH * 3);
+        drawHoverStat(gg, mouseX, mouseY, textX, textY, stat4, 0x99FFB6, scale, lineH * 4);
+        drawHoverStat(gg, mouseX, mouseY, textX, textY, stat5, 0xFF9CC8, scale, lineH * 5);
+        drawHoverStat(gg, mouseX, mouseY, textX, textY, stat6, 0xFFB3B3, scale, lineH * 6);
+        hoveredTooltip = tooltipIfHovered(hoveredTooltip, mouseX, mouseY, textX, textY + lineH * 0, stat0, scale);
+        hoveredTooltip = tooltipIfHovered(hoveredTooltip, mouseX, mouseY, textX, textY + lineH * 1, stat1, scale);
+        hoveredTooltip = tooltipIfHovered(hoveredTooltip, mouseX, mouseY, textX, textY + lineH * 2, stat2, scale);
+        hoveredTooltip = tooltipIfHovered(hoveredTooltip, mouseX, mouseY, textX, textY + lineH * 3, stat3, scale);
+        hoveredTooltip = tooltipIfHovered(hoveredTooltip, mouseX, mouseY, textX, textY + lineH * 4, stat4, scale);
+        hoveredTooltip = tooltipIfHovered(hoveredTooltip, mouseX, mouseY, textX, textY + lineH * 5, stat5, scale);
+        hoveredTooltip = tooltipIfHovered(hoveredTooltip, mouseX, mouseY, textX, textY + lineH * 6, stat6, scale);
 
-        int listY = panelY + 92;
-        drawScaledText(gg, Component.translatable("gui.aura.player.selected_abilities").getString(), panelX + 8, listY, 0xE0E0E0, 0.65F);
-        int row = 1;
+        int listY = panelY + 85;
+        int leftColX = panelX + 11;
+        int rightColX = panelX + 80;
+        String abilitiesHdr = Component.translatable("gui.aura.player.selected_abilities").getString();
+        String skillsHdr = Component.translatable("gui.aura.player.skills").getString();
+        drawScaledText(gg, abilitiesHdr, leftColX, listY, 0xE0E0E0, 0.65F);
+        drawScaledText(gg, skillsHdr, rightColX, listY, 0xE0E0E0, 0.65F);
+        hoveredTooltip = tooltipIfHovered(hoveredTooltip, mouseX, mouseY, leftColX, listY, abilitiesHdr, 0.65F);
+        hoveredTooltip = tooltipIfHovered(hoveredTooltip, mouseX, mouseY, rightColX, listY, skillsHdr, 0.65F);
+        int row = 0;
         for (AbilityElement element : AbilityElement.values()) {
             AbilityId selected = playerAbilities.selectedSpecialization(element);
             if (selected == null) continue;
+            AbilityDefinition def = AbilityRegistry.def(selected);
+            if (def == null) continue;
+            int y = listY + 8 + (row * 9);
             String line = Component.translatable("gui.aura.player.ability_bind", selected.title(), AbilityKeybinds.keyName(selected)).getString();
-            drawScaledText(gg, line, panelX + 8, listY + (row * 8), 0xD8D8D8, 0.6F);
+            boolean hovered = mouseX >= leftColX && mouseX <= leftColX + 68 && mouseY >= y && mouseY <= y + 8;
+            drawScaledText(gg, line, leftColX, y + 1, elementColor(def.element()), hovered ? 0.525F : 0.5F);
+            hoveredTooltip = tooltipIfHovered(hoveredTooltip, mouseX, mouseY, leftColX, y + 1, line, hovered ? 0.525F : 0.5F);
             row++;
             if (row > 6) break;
         }
+
+        int skillRow = 0;
+        for (SkillDefinition def : SkillRegistry.primarySkills()) {
+            int level = skills.level(def.id());
+            if (level <= 0) continue;
+            int y = listY + 8 + (skillRow * 9);
+            boolean hovered = mouseX >= rightColX && mouseX <= rightColX + 58 && mouseY >= y && mouseY <= y + 8;
+            String line = Component.translatable("gui.aura.player.skill_level", def.title(), level).getString();
+            drawScaledText(gg, line, rightColX, y + 1, skillColor(def.id()), hovered ? 0.525F : 0.5F);
+            hoveredTooltip = tooltipIfHovered(hoveredTooltip, mouseX, mouseY, rightColX, y + 1, line, hovered ? 0.525F : 0.5F);
+            skillRow++;
+            if (skillRow > 6) break;
+        }
+        if (hoveredTooltip != null) gg.renderTooltip(font, hoveredTooltip, mouseX, mouseY - 6);
+    }
+
+    private static int elementColor(AbilityElement element) {
+        return switch (element) {
+            case FIRE -> 0xFF8A66;
+            case ICE -> 0x8CD3FF;
+            case LIGHTNING -> 0xFFE36B;
+            case POISON -> 0x96E07A;
+            case FORCE -> 0xC4A5FF;
+            case MAGIC -> 0xFF9CDD;
+            case WIND -> 0xA9FFD8;
+        };
+    }
+
+    private static int skillColor(SkillId id) {
+        return switch (id.category()) {
+            case STRENGTH -> 0xFF8E8E;
+            case RESISTANCE -> 0x8CC7FF;
+            case AGILITY -> 0x99FFB6;
+            case VITALITY -> 0xFF9CC8;
+            case LUCK -> 0xFFE08A;
+        };
     }
 
     private static String fmt(double value) {

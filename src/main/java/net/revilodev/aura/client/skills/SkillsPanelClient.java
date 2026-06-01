@@ -19,7 +19,9 @@ import net.neoforged.neoforge.common.NeoForge;
 import net.revilodev.aura.CodexMod;
 import net.revilodev.aura.abilities.AbilitiesAttachments;
 import net.revilodev.aura.abilities.AbilityElement;
+import net.revilodev.aura.abilities.AbilityDefinition;
 import net.revilodev.aura.abilities.AbilityId;
+import net.revilodev.aura.abilities.AbilityRegistry;
 import net.revilodev.aura.abilities.PlayerAbilities;
 import net.revilodev.aura.attributes.CodexAttributes;
 import net.revilodev.aura.client.AuraClientConfig;
@@ -30,9 +32,13 @@ import net.revilodev.aura.client.SkillsToggleButton;
 import net.revilodev.aura.client.abilities.AbilityKeybinds;
 import net.revilodev.aura.client.abilities.AbilityDetailsPanel;
 import net.revilodev.aura.client.abilities.AbilityListWidget;
+import net.revilodev.aura.client.screen.LevelUpConfigScreen;
 import net.revilodev.aura.skills.SkillBalance;
+import net.revilodev.aura.skills.SkillDefinition;
 import net.revilodev.aura.skills.SkillId;
+import net.revilodev.aura.skills.SkillRegistry;
 import net.revilodev.aura.skills.SkillsAttachments;
+import com.revilo.levelup.api.LevelUpApi;
 
 import java.lang.reflect.Field;
 import java.util.ArrayList;
@@ -60,7 +66,7 @@ public final class SkillsPanelClient {
     private static final ResourceLocation SETTINGS_TAB_TEX_PULLED =
             ResourceLocation.fromNamespaceAndPath(CodexMod.MOD_ID, "textures/gui/sprites/pull-tab-settings-pulled.png");
     private static final ResourceLocation SETTINGS_TAB_TEX_PULLED_ALT =
-            ResourceLocation.fromNamespaceAndPath(CodexMod.MOD_ID, "textures/gui/sprites/pull-tab-settings_pulled.png");
+            ResourceLocation.fromNamespaceAndPath(CodexMod.MOD_ID, "textures/gui/sprites/pull-tab-settings-selected.png");
 
     private static final int PANEL_W = 147;
     private static final int PANEL_H = 166;
@@ -93,7 +99,7 @@ public final class SkillsPanelClient {
     }
 
     public static void onScreenInit(ScreenEvent.Init.Post event) {
-        if (AuraClientConfig.disableInventoryCodexBook()) return;
+        if (AuraClientConfig.disableInventoryCodexBook() || AuraClientConfig.blockOpenSkillsAbilitiesPanel()) return;
         Screen screen = event.getScreen();
         if (!(screen instanceof InventoryScreen inv)) return;
 
@@ -120,13 +126,17 @@ public final class SkillsPanelClient {
         st.skillsTab = new PanelTabButton(0, 0, PanelTab.SKILLS, () -> setTab(st, PanelTab.SKILLS));
         st.abilitiesTab = new PanelTabButton(0, 0, PanelTab.ABILITIES, () -> setTab(st, PanelTab.ABILITIES));
         st.playerBottomTab = new BottomPullTabButton(0, 0, Component.translatable("gui.aura.player"), PLAYER_TAB_TEX, PLAYER_TAB_TEX_PULLED, PLAYER_TAB_TEX_SELECTED, () -> setViewMode(st, ViewMode.PLAYER));
-        st.settingsBottomTab = new BottomPullTabButton(0, 0, Component.translatable("gui.aura.settings"), SETTINGS_TAB_TEX, SETTINGS_TAB_TEX_PULLED_ALT, SETTINGS_TAB_TEX_PULLED_ALT, () -> setViewMode(st, ViewMode.SETTINGS));
+        st.settingsBottomTab = new BottomPullTabButton(0, 0, Component.translatable("gui.aura.settings"), SETTINGS_TAB_TEX, SETTINGS_TAB_TEX_PULLED, SETTINGS_TAB_TEX_PULLED_ALT, () -> setViewMode(st, ViewMode.SETTINGS));
         initSettingsRows(st);
 
         event.addListener(st.btn);
 
         reposition(inv, st);
         st.recipeBtn = findRecipeButton(inv);
+        if (st.recipeBtn != null) {
+            st.recipeBtnOffsetX = st.recipeBtn.getX() - inv.getGuiLeft();
+            st.recipeBtnOffsetY = st.recipeBtn.getY() - inv.getGuiTop();
+        }
 
         if (lastOpen) {
             st.open = true;
@@ -148,7 +158,7 @@ public final class SkillsPanelClient {
     }
 
     public static void onScreenRenderPre(ScreenEvent.Render.Pre event) {
-        if (AuraClientConfig.disableInventoryCodexBook()) return;
+        if (AuraClientConfig.disableInventoryCodexBook() || AuraClientConfig.blockOpenSkillsAbilitiesPanel()) return;
         Screen screen = event.getScreen();
         State st = STATES.get(screen);
         if (st == null || !(screen instanceof InventoryScreen inv)) return;
@@ -159,10 +169,23 @@ public final class SkillsPanelClient {
         applySkillsVsRecipePanelRule(inv, st);
 
         if (st.recipeBtn == null) st.recipeBtn = findRecipeButton(inv);
+        if (st.recipeBtn != null && (st.recipeBtnOffsetX == null || st.recipeBtnOffsetY == null)) {
+            st.recipeBtnOffsetX = st.recipeBtn.getX() - inv.getGuiLeft();
+            st.recipeBtnOffsetY = st.recipeBtn.getY() - inv.getGuiTop();
+        }
+        updateRecipeButtonPosition(inv, st);
+        if (st.open && isRecipePanelOpen(inv)) {
+            st.open = false;
+            lastOpen = false;
+            if (st.originalLeft != null) setLeft(inv, st.originalLeft);
+            reposition(inv, st);
+            updateVisibility(st);
+            applySkillsVsRecipePanelRule(inv, st);
+        }
     }
 
     public static void onScreenRenderPost(ScreenEvent.Render.Post event) {
-        if (AuraClientConfig.disableInventoryCodexBook()) return;
+        if (AuraClientConfig.disableInventoryCodexBook() || AuraClientConfig.blockOpenSkillsAbilitiesPanel()) return;
         Screen screen = event.getScreen();
         State st = STATES.get(screen);
         if (st == null || !st.open || !(screen instanceof InventoryScreen inv)) return;
@@ -188,7 +211,7 @@ public final class SkillsPanelClient {
     }
 
     public static void onMouseScrolled(ScreenEvent.MouseScrolled.Pre event) {
-        if (AuraClientConfig.disableInventoryCodexBook()) return;
+        if (AuraClientConfig.disableInventoryCodexBook() || AuraClientConfig.blockOpenSkillsAbilitiesPanel()) return;
         State st = STATES.get(event.getScreen());
         if (st == null || !st.open) return;
         if (st.viewMode == ViewMode.SETTINGS) {
@@ -213,7 +236,7 @@ public final class SkillsPanelClient {
     }
 
     public static void onMouseDragged(ScreenEvent.MouseDragged.Pre event) {
-        if (AuraClientConfig.disableInventoryCodexBook()) return;
+        if (AuraClientConfig.disableInventoryCodexBook() || AuraClientConfig.blockOpenSkillsAbilitiesPanel()) return;
         State st = STATES.get(event.getScreen());
         if (st == null || !st.open || st.viewMode != ViewMode.MAIN || st.activeTab != PanelTab.ABILITIES) return;
         if (st.abilityList.mouseDragged(event.getMouseX(), event.getMouseY(), event.getMouseButton(), event.getDragX(), event.getDragY())) {
@@ -222,20 +245,24 @@ public final class SkillsPanelClient {
     }
 
     public static void onMouseReleased(ScreenEvent.MouseButtonReleased.Pre event) {
-        if (AuraClientConfig.disableInventoryCodexBook()) return;
+        if (AuraClientConfig.disableInventoryCodexBook() || AuraClientConfig.blockOpenSkillsAbilitiesPanel()) return;
         State st = STATES.get(event.getScreen());
         if (st == null || !st.open) return;
         st.abilityList.endDrag();
     }
 
     public static void onMousePressed(ScreenEvent.MouseButtonPressed.Pre event) {
-        if (AuraClientConfig.disableInventoryCodexBook()) return;
+        if (AuraClientConfig.disableInventoryCodexBook() || AuraClientConfig.blockOpenSkillsAbilitiesPanel()) return;
         State st = STATES.get(event.getScreen());
         if (st == null || !st.open) return;
         if (event.getButton() != 0 && event.getButton() != 1) return;
 
         double mouseX = event.getMouseX();
         double mouseY = event.getMouseY();
+        if (event.getButton() == 0 && st.recipeBtn != null && st.recipeBtn.visible && st.recipeBtn.isMouseOver(mouseX, mouseY) && st.open) {
+            toggle(st);
+            return;
+        }
         if (event.getButton() == 0 && (st.skillsTab.mouseClicked(mouseX, mouseY, event.getButton()) || st.abilitiesTab.mouseClicked(mouseX, mouseY, event.getButton()))) {
             event.setCanceled(true);
             return;
@@ -274,10 +301,12 @@ public final class SkillsPanelClient {
     }
 
     private static void toggle(State st) {
+        if (!st.open && AuraClientConfig.blockOpenSkillsAbilitiesPanel()) return;
         st.open = !st.open;
         lastOpen = st.open;
         if (st.open) {
             if (st.originalLeft == null) st.originalLeft = getLeft(st.inv);
+            if (st.recipeBtn != null && isRecipePanelOpen(st.inv)) st.recipeBtn.onPress();
             setLeft(st.inv, computeCenteredLeft(st.inv));
         } else if (st.originalLeft != null) {
             setLeft(st.inv, st.originalLeft);
@@ -325,6 +354,11 @@ public final class SkillsPanelClient {
             }
         }
         return null;
+    }
+
+    private static void updateRecipeButtonPosition(InventoryScreen inv, State st) {
+        if (st.recipeBtn == null || st.recipeBtnOffsetX == null || st.recipeBtnOffsetY == null) return;
+        st.recipeBtn.setPosition(inv.getGuiLeft() + st.recipeBtnOffsetX, inv.getGuiTop() + st.recipeBtnOffsetY);
     }
 
     private static boolean isRecipePanelOpen(InventoryScreen inv) {
@@ -455,7 +489,7 @@ public final class SkillsPanelClient {
 
         String label = Component.translatable(abilitiesTab ? "gui.aura.points.ability" : "gui.aura.points.skill", points).getString();
         float scale = 0.85F;
-        int x = (abilitiesTab ? st.abilityList.getX() + 10 : st.skillsList.getX()) + 1;
+        int x = (abilitiesTab ? st.abilityList.getX() + 10 : st.skillsList.getX()) + 13;
         int y = (abilitiesTab ? st.abilityList.getY() : st.skillsList.getY()) + 4;
         int color = abilitiesTab ? 0xC78CFF : 0x6AB2FF;
         gg.pose().pushPose();
@@ -480,6 +514,10 @@ public final class SkillsPanelClient {
         st.settingsRows.add(new SettingRow(Component.translatable("gui.aura.settings.disable_inventory_book").getString(), () -> boolState(AuraClientConfig.disableInventoryCodexBook()), AuraClientConfig::toggleDisableInventoryCodexBook));
         st.settingsRows.add(new SettingRow(Component.translatable("gui.aura.settings.reposition_hud").getString(), () -> Component.translatable("gui.aura.hud_position." + AuraClientConfig.hudPosition().name().toLowerCase(java.util.Locale.ROOT)).getString(), AuraClientConfig::cycleHudPosition));
         st.settingsRows.add(new SettingRow(Component.translatable("gui.aura.settings.disable_skills_abilities").getString(), () -> boolState(AuraClientConfig.disableSkillsAndAbilities()), AuraClientConfig::toggleDisableSkillsAndAbilities));
+        st.settingsRows.add(new SettingRow(Component.translatable("gui.aura.settings.block_ability_switching").getString(), () -> boolState(AuraClientConfig.blockAbilitySwitching()), AuraClientConfig::toggleBlockAbilitySwitching));
+        st.settingsRows.add(new SettingRow(Component.translatable("gui.aura.settings.block_upgrade_downgrade").getString(), () -> boolState(AuraClientConfig.blockUpgradeDowngrade()), AuraClientConfig::toggleBlockUpgradeDowngrade));
+        st.settingsRows.add(new SettingRow(Component.translatable("gui.aura.settings.block_open_panel").getString(), () -> boolState(AuraClientConfig.blockOpenSkillsAbilitiesPanel()), AuraClientConfig::toggleBlockOpenSkillsAbilitiesPanel));
+        st.settingsRows.add(new SettingRow(Component.translatable("gui.aura.settings.levelup_values").getString(), () -> Component.translatable("gui.aura.open").getString(), () -> net.minecraft.client.Minecraft.getInstance().setScreen(new LevelUpConfigScreen(net.minecraft.client.Minecraft.getInstance().screen))));
     }
 
     private static int settingsViewY(State st) {
@@ -531,14 +569,35 @@ public final class SkillsPanelClient {
         gg.pose().popPose();
     }
 
+    private static Component drawHoverStat(GuiGraphics gg, Component currentTooltip, net.minecraft.client.Minecraft mc, int mouseX, int mouseY, int baseX, int baseY, String text, int color, float scale, int yOffset) {
+        int y = baseY + yOffset;
+        int w = (int) (mc.font.width(text) * scale);
+        boolean hovered = mouseX >= baseX && mouseX <= baseX + w + 2 && mouseY >= y && mouseY <= y + 7;
+        drawScaledText(gg, mc, text, baseX, y, color, hovered ? scale * 1.05F : scale);
+        if (currentTooltip == null && hovered) return Component.literal(text);
+        return currentTooltip;
+    }
+
+    private static Component tooltipIfHovered(Component currentTooltip, net.minecraft.client.Minecraft mc, int mouseX, int mouseY, int x, int y, String text, float scale) {
+        if (currentTooltip != null) return currentTooltip;
+        int w = (int) (mc.font.width(text) * scale);
+        int h = Math.max(6, (int) (mc.font.lineHeight * scale));
+        if (mouseX >= x && mouseX <= x + w + 2 && mouseY >= y && mouseY <= y + h) return Component.literal(text);
+        return null;
+    }
+
     private static void renderPlayerView(GuiGraphics gg, State st, int mouseX, int mouseY) {
         var mc = net.minecraft.client.Minecraft.getInstance();
         if (mc.player == null) return;
+        Component hoveredTooltip = null;
 
-        int dollX = st.bg.getX() + 30;
-        int dollY = st.bg.getY() + PANEL_H - 18;
+        int dollX = st.bg.getX() + 35;
+        int dollY = st.bg.getY() + PANEL_H - 22;
         int dollSize = 36;
+        gg.pose().pushPose();
+        gg.pose().translate(0.0F, 0.0F, 1000.0F);
         InventoryScreen.renderEntityInInventoryFollowsMouse(gg, dollX, dollY, dollSize, dollX - mouseX, dollY - 26 - mouseY, 30.0F, 0.0F, 0.0F, mc.player);
+        gg.pose().popPose();
 
         var player = mc.player;
         var playerAbilities = player.getData(AbilitiesAttachments.PLAYER_ABILITIES.get());
@@ -547,28 +606,85 @@ public final class SkillsPanelClient {
         double critPower = 1.5D + SkillBalance.critPowerDamage(skills.level(SkillId.CRIT_POWER));
         double abilityPower = CodexAttributes.baseAbilityPower(player);
         int defence = player.getArmorValue();
+        double speed = player.getAttributeValue(Attributes.MOVEMENT_SPEED);
+        double maxHealth = player.getMaxHealth();
+        int luckLevel = skills.level(SkillId.LUCK);
+        double leechChance = skills.level(SkillId.HEALTH_BOOST) > 0 ? SkillBalance.lifeLeach(luckLevel) * 100.0D : 0.0D;
 
-        int textX = st.bg.getX() + 58;
-        int textY = st.bg.getY() + 28;
+        int textX = st.bg.getX() + 11;
+        int textY = st.bg.getY() + 18;
         int lineH = 9;
         float scale = 0.65F;
-        drawScaledText(gg, mc, Component.translatable("gui.aura.player.level", player.experienceLevel).getString(), st.bg.getX() + 8, st.bg.getY() + 10, 0xFFE08A, 0.75F);
-        drawScaledText(gg, mc, Component.translatable("gui.aura.player.base_damage", fmt(baseDamage)).getString(), textX, textY, 0xFF8080, scale);
-        drawScaledText(gg, mc, Component.translatable("gui.aura.player.crit_power", fmt(critPower) + "x").getString(), textX, textY + lineH, 0xFFD580, scale);
-        drawScaledText(gg, mc, Component.translatable("gui.aura.player.ability_power", fmt(abilityPower)).getString(), textX, textY + (lineH * 2), 0xC78CFF, scale);
-        drawScaledText(gg, mc, Component.translatable("gui.aura.player.defence", defence).getString(), textX, textY + (lineH * 3), 0x8CD3FF, scale);
+        String levelText = Component.translatable("gui.aura.player.level", LevelUpApi.getLevel(player)).getString();
+        drawScaledText(gg, mc, levelText, st.bg.getX() + 14, st.bg.getY() + 10, 0xFFE08A, 0.75F);
+        hoveredTooltip = tooltipIfHovered(hoveredTooltip, mc, mouseX, mouseY, st.bg.getX() + 14, st.bg.getY() + 10, levelText, 0.75F);
+        hoveredTooltip = drawHoverStat(gg, hoveredTooltip, mc, mouseX, mouseY, textX, textY, Component.translatable("gui.aura.player.base_damage", fmt(baseDamage)).getString(), 0xFF8080, scale, lineH * 0);
+        hoveredTooltip = drawHoverStat(gg, hoveredTooltip, mc, mouseX, mouseY, textX, textY, Component.translatable("gui.aura.player.crit_power", fmt(critPower) + "x").getString(), 0xFFD580, scale, lineH * 1);
+        hoveredTooltip = drawHoverStat(gg, hoveredTooltip, mc, mouseX, mouseY, textX, textY, Component.translatable("gui.aura.player.ability_power", fmt(abilityPower)).getString(), 0xC78CFF, scale, lineH * 2);
+        hoveredTooltip = drawHoverStat(gg, hoveredTooltip, mc, mouseX, mouseY, textX, textY, Component.translatable("gui.aura.player.defence", defence).getString(), 0x8CD3FF, scale, lineH * 3);
+        hoveredTooltip = drawHoverStat(gg, hoveredTooltip, mc, mouseX, mouseY, textX, textY, Component.translatable("gui.aura.player.speed", fmt(speed)).getString(), 0x99FFB6, scale, lineH * 4);
+        hoveredTooltip = drawHoverStat(gg, hoveredTooltip, mc, mouseX, mouseY, textX, textY, Component.translatable("gui.aura.player.leeching", fmt(leechChance) + "%").getString(), 0xFF9CC8, scale, lineH * 5);
+        hoveredTooltip = drawHoverStat(gg, hoveredTooltip, mc, mouseX, mouseY, textX, textY, Component.translatable("gui.aura.player.health", fmt(maxHealth)).getString(), 0xFFB3B3, scale, lineH * 6);
 
-        int listY = st.bg.getY() + 92;
-        drawScaledText(gg, mc, Component.translatable("gui.aura.player.selected_abilities").getString(), st.bg.getX() + 8, listY, 0xE0E0E0, 0.65F);
-        int row = 1;
+        int listY = st.bg.getY() + 85;
+        int leftColX = st.bg.getX() + 11;
+        int rightColX = st.bg.getX() + 80;
+        String abilitiesHdr = Component.translatable("gui.aura.player.selected_abilities").getString();
+        String skillsHdr = Component.translatable("gui.aura.player.skills").getString();
+        drawScaledText(gg, mc, abilitiesHdr, leftColX, listY, 0xE0E0E0, 0.65F);
+        drawScaledText(gg, mc, skillsHdr, rightColX, listY, 0xE0E0E0, 0.65F);
+        hoveredTooltip = tooltipIfHovered(hoveredTooltip, mc, mouseX, mouseY, leftColX, listY, abilitiesHdr, 0.65F);
+        hoveredTooltip = tooltipIfHovered(hoveredTooltip, mc, mouseX, mouseY, rightColX, listY, skillsHdr, 0.65F);
+        int row = 0;
         for (AbilityElement element : AbilityElement.values()) {
             AbilityId selected = playerAbilities.selectedSpecialization(element);
             if (selected == null) continue;
+            AbilityDefinition def = AbilityRegistry.def(selected);
+            if (def == null) continue;
+            int y = listY + 8 + (row * 9);
             String line = Component.translatable("gui.aura.player.ability_bind", selected.title(), AbilityKeybinds.keyName(selected)).getString();
-            drawScaledText(gg, mc, line, st.bg.getX() + 8, listY + (row * 8), 0xD8D8D8, 0.6F);
+            boolean hovered = mouseX >= leftColX && mouseX <= leftColX + 68 && mouseY >= y && mouseY <= y + 8;
+            drawScaledText(gg, mc, line, leftColX, y + 1, elementColor(def.element()), hovered ? 0.525F : 0.5F);
+            hoveredTooltip = tooltipIfHovered(hoveredTooltip, mc, mouseX, mouseY, leftColX, y + 1, line, hovered ? 0.525F : 0.5F);
             row++;
             if (row > 6) break;
         }
+
+        int skillRow = 0;
+        for (SkillDefinition def : SkillRegistry.primarySkills()) {
+            int level = skills.level(def.id());
+            if (level <= 0) continue;
+            int y = listY + 8 + (skillRow * 9);
+            boolean hovered = mouseX >= rightColX && mouseX <= rightColX + 58 && mouseY >= y && mouseY <= y + 8;
+            String line = Component.translatable("gui.aura.player.skill_level", def.title(), level).getString();
+            drawScaledText(gg, mc, line, rightColX, y + 1, skillColor(def.id()), hovered ? 0.525F : 0.5F);
+            hoveredTooltip = tooltipIfHovered(hoveredTooltip, mc, mouseX, mouseY, rightColX, y + 1, line, hovered ? 0.525F : 0.5F);
+            skillRow++;
+            if (skillRow > 6) break;
+        }
+        if (hoveredTooltip != null) gg.renderTooltip(mc.font, hoveredTooltip, mouseX, mouseY - 6);
+    }
+
+    private static int elementColor(AbilityElement element) {
+        return switch (element) {
+            case FIRE -> 0xFF8A66;
+            case ICE -> 0x8CD3FF;
+            case LIGHTNING -> 0xFFE36B;
+            case POISON -> 0x96E07A;
+            case FORCE -> 0xC4A5FF;
+            case MAGIC -> 0xFF9CDD;
+            case WIND -> 0xA9FFD8;
+        };
+    }
+
+    private static int skillColor(SkillId id) {
+        return switch (id.category()) {
+            case STRENGTH -> 0xFF8E8E;
+            case RESISTANCE -> 0x8CC7FF;
+            case AGILITY -> 0x99FFB6;
+            case VITALITY -> 0xFF9CC8;
+            case LUCK -> 0xFFE08A;
+        };
     }
 
     private static String fmt(double value) {
@@ -624,6 +740,8 @@ public final class SkillsPanelClient {
         PanelTabButton skillsTab;
         PanelTabButton abilitiesTab;
         ImageButton recipeBtn;
+        Integer recipeBtnOffsetX;
+        Integer recipeBtnOffsetY;
         boolean open;
         Integer originalLeft;
         PanelTab activeTab = PanelTab.SKILLS;
