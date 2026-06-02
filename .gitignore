@@ -17,6 +17,7 @@ out
 build
 .gradle
 AGENTS.md
+PROJECT_MAP.md
 
 # other
 eclipse

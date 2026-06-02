@@ -23,8 +23,7 @@ public final class ModItems {
 
     private static void addToCreativeTabs(BuildCreativeModeTabContentsEvent event) {
         if (event.getTabKey() == CreativeModeTabs.INGREDIENTS
-                || event.getTabKey() == CreativeModeTabs.TOOLS_AND_UTILITIES
-                || event.getTabKey() == CreativeModeTabs.SEARCH) {
+                || event.getTabKey() == CreativeModeTabs.TOOLS_AND_UTILITIES) {
             event.accept(SKILLS_BOOK.get());
         }
     }

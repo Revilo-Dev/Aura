@@ -174,13 +174,8 @@ public final class SkillsPanelClient {
             st.recipeBtnOffsetY = st.recipeBtn.getY() - inv.getGuiTop();
         }
         updateRecipeButtonPosition(inv, st);
-        if (st.open && isRecipePanelOpen(inv)) {
-            st.open = false;
-            lastOpen = false;
-            if (st.originalLeft != null) setLeft(inv, st.originalLeft);
-            reposition(inv, st);
-            updateVisibility(st);
-            applySkillsVsRecipePanelRule(inv, st);
+        if (!isRecipePanelOpen(inv)) {
+            st.closingRecipeForAura = false;
         }
     }
 
@@ -254,11 +249,17 @@ public final class SkillsPanelClient {
     public static void onMousePressed(ScreenEvent.MouseButtonPressed.Pre event) {
         if (AuraClientConfig.disableInventoryCodexBook() || AuraClientConfig.blockOpenSkillsAbilitiesPanel()) return;
         State st = STATES.get(event.getScreen());
-        if (st == null || !st.open) return;
+        if (st == null) return;
         if (event.getButton() != 0 && event.getButton() != 1) return;
 
         double mouseX = event.getMouseX();
         double mouseY = event.getMouseY();
+        if (event.getButton() == 0 && st.btn != null && st.btn.visible && st.btn.active && st.btn.isMouseOver(mouseX, mouseY)) {
+            toggle(st);
+            event.setCanceled(true);
+            return;
+        }
+        if (!st.open) return;
         if (event.getButton() == 0 && st.recipeBtn != null && st.recipeBtn.visible && st.recipeBtn.isMouseOver(mouseX, mouseY) && st.open) {
             toggle(st);
             return;
@@ -306,10 +307,14 @@ public final class SkillsPanelClient {
         lastOpen = st.open;
         if (st.open) {
             if (st.originalLeft == null) st.originalLeft = getLeft(st.inv);
-            if (st.recipeBtn != null && isRecipePanelOpen(st.inv)) st.recipeBtn.onPress();
+            if (st.recipeBtn != null && isRecipePanelOpen(st.inv)) {
+                st.closingRecipeForAura = true;
+                st.recipeBtn.onPress();
+            }
             setLeft(st.inv, computeCenteredLeft(st.inv));
         } else if (st.originalLeft != null) {
             setLeft(st.inv, st.originalLeft);
+            st.closingRecipeForAura = false;
         }
 
         reposition(st.inv, st);
@@ -489,7 +494,7 @@ public final class SkillsPanelClient {
 
         String label = Component.translatable(abilitiesTab ? "gui.aura.points.ability" : "gui.aura.points.skill", points).getString();
         float scale = 0.85F;
-        int x = (abilitiesTab ? st.abilityList.getX() + 10 : st.skillsList.getX()) + 13;
+        int x = (abilitiesTab ? st.abilityList.getX() + 15 : st.skillsList.getX()) + 13;
         int y = (abilitiesTab ? st.abilityList.getY() : st.skillsList.getY()) + 4;
         int color = abilitiesTab ? 0xC78CFF : 0x6AB2FF;
         gg.pose().pushPose();
@@ -743,6 +748,7 @@ public final class SkillsPanelClient {
         Integer recipeBtnOffsetX;
         Integer recipeBtnOffsetY;
         boolean open;
+        boolean closingRecipeForAura;
         Integer originalLeft;
         PanelTab activeTab = PanelTab.SKILLS;
         BottomPullTabButton playerBottomTab;

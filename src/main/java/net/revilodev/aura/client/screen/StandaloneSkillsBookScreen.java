@@ -196,35 +196,7 @@ public final class StandaloneSkillsBookScreen extends Screen {
         settingsRows.add(new SettingRow(Component.translatable("gui.aura.settings.block_ability_switching").getString(), () -> boolState(AuraClientConfig.blockAbilitySwitching()), AuraClientConfig::toggleBlockAbilitySwitching));
         settingsRows.add(new SettingRow(Component.translatable("gui.aura.settings.block_upgrade_downgrade").getString(), () -> boolState(AuraClientConfig.blockUpgradeDowngrade()), AuraClientConfig::toggleBlockUpgradeDowngrade));
         settingsRows.add(new SettingRow(Component.translatable("gui.aura.settings.block_open_panel").getString(), () -> boolState(AuraClientConfig.blockOpenSkillsAbilitiesPanel()), AuraClientConfig::toggleBlockOpenSkillsAbilitiesPanel));
-        settingsRows.add(new SettingRow(Component.translatable("gui.aura.settings.levelup_values").getString(), () -> Component.translatable(levelUpExpanded ? "gui.aura.close" : "gui.aura.open").getString(), button -> toggleLevelUpExpanded()));
-        if (levelUpExpanded) {
-            settingsRows.add(levelUpSection("gui.aura.levelup.section.client_hud"));
-            settingsRows.add(levelUpBool("gui.aura.levelup.show_top_center_level_overlay", () -> levelUpStore.showTopCenterLevelOverlay, v -> levelUpStore.showTopCenterLevelOverlay = v));
-            settingsRows.add(levelUpBool("gui.aura.levelup.show_temporary_level_overlay", () -> levelUpStore.showTemporaryLevelOverlay, v -> levelUpStore.showTemporaryLevelOverlay = v));
-            settingsRows.add(levelUpBool("gui.aura.levelup.show_inventory_level_bar", () -> levelUpStore.showInventoryLevelBar, v -> levelUpStore.showInventoryLevelBar = v));
-            settingsRows.add(levelUpEnumTopBottom("gui.aura.levelup.level_hud_position", () -> levelUpStore.levelHudPosition, v -> levelUpStore.levelHudPosition = v));
-            settingsRows.add(levelUpBool("gui.aura.levelup.level_hud_stay_on_screen", () -> levelUpStore.levelHudStayOnScreen, v -> levelUpStore.levelHudStayOnScreen = v));
-            settingsRows.add(levelUpReadOnly("gui.aura.levelup.level_hud_color", () -> "#" + hex2(levelUpStore.hudColorR) + hex2(levelUpStore.hudColorG) + hex2(levelUpStore.hudColorB)));
-            settingsRows.add(levelUpInt("gui.aura.levelup.level_hud_color_r", () -> levelUpStore.hudColorR, v -> levelUpStore.hudColorR = v, 1, 0, 255));
-            settingsRows.add(levelUpInt("gui.aura.levelup.level_hud_color_g", () -> levelUpStore.hudColorG, v -> levelUpStore.hudColorG = v, 1, 0, 255));
-            settingsRows.add(levelUpInt("gui.aura.levelup.level_hud_color_b", () -> levelUpStore.hudColorB, v -> levelUpStore.hudColorB = v, 1, 0, 255));
-            settingsRows.add(levelUpInt("gui.aura.levelup.hud_level_bar_offset_x", () -> levelUpStore.hudLevelBarOffsetX, v -> levelUpStore.hudLevelBarOffsetX = v, 1, -500, 500));
-            settingsRows.add(levelUpInt("gui.aura.levelup.hud_level_bar_offset_y", () -> levelUpStore.hudLevelBarOffsetY, v -> levelUpStore.hudLevelBarOffsetY = v, 1, -500, 500));
-            settingsRows.add(levelUpInt("gui.aura.levelup.inventory_level_bar_offset_x", () -> levelUpStore.inventoryLevelBarOffsetX, v -> levelUpStore.inventoryLevelBarOffsetX = v, 1, -500, 500));
-            settingsRows.add(levelUpInt("gui.aura.levelup.inventory_level_bar_offset_y", () -> levelUpStore.inventoryLevelBarOffsetY, v -> levelUpStore.inventoryLevelBarOffsetY = v, 1, -500, 500));
-            settingsRows.add(levelUpAction("gui.aura.levelup.open_hud_reposition", this::openHudReposition));
-            settingsRows.add(levelUpAction("gui.aura.levelup.open_inventory_reposition", this::openInventoryReposition));
-            settingsRows.add(levelUpSection("gui.aura.levelup.section.progression"));
-            settingsRows.add(levelUpInt("gui.aura.levelup.base_xp_per_level", () -> levelUpStore.baseXpPerLevel, v -> levelUpStore.baseXpPerLevel = v, 1, 0, 1_000_000));
-            settingsRows.add(levelUpInt("gui.aura.levelup.linear_xp_per_level", () -> levelUpStore.linearXpPerLevel, v -> levelUpStore.linearXpPerLevel = v, 1, 0, 1_000_000));
-            settingsRows.add(levelUpDouble("gui.aura.levelup.exponent", () -> levelUpStore.exponent, v -> levelUpStore.exponent = v, 0.01D, 0.01D, 100.0D));
-            settingsRows.add(levelUpDouble("gui.aura.levelup.level_multiplier", () -> levelUpStore.levelMultiplier, v -> levelUpStore.levelMultiplier = v, 0.01D, 0.0D, 100.0D));
-            settingsRows.add(levelUpInt("gui.aura.levelup.max_level", () -> levelUpStore.maxLevel, v -> levelUpStore.maxLevel = v, 1, 1, 1_000_000));
-            settingsRows.add(levelUpSection("gui.aura.levelup.section.sources"));
-            settingsRows.add(levelUpBool("gui.aura.levelup.enable_mob_kill_xp", () -> levelUpStore.enableMobKillXp, v -> levelUpStore.enableMobKillXp = v));
-            settingsRows.add(levelUpInt("gui.aura.levelup.mob_kill_xp", () -> levelUpStore.mobKillXp, v -> levelUpStore.mobKillXp = v, 1, 0, 1_000_000));
-            settingsRows.add(levelUpBool("gui.aura.levelup.drop_levels_only_from_mobs_with_tag", () -> levelUpStore.dropLevelsOnlyFromMobsWithTag, v -> levelUpStore.dropLevelsOnlyFromMobsWithTag = v));
-        }
+        settingsRows.add(new SettingRow(Component.translatable("gui.aura.settings.levelup_values").getString(), () -> Component.translatable("gui.aura.open").getString(), () -> minecraft.setScreen(new LevelUpConfigScreen(this))));
         settingsRows.add(new SettingRow(Component.translatable("gui.aura.settings.disabled_skills_abilities").getString(), () -> Component.translatable("gui.aura.open").getString(), () -> minecraft.setScreen(new DisabledSkillsAbilitiesScreen(this))));
     }
 

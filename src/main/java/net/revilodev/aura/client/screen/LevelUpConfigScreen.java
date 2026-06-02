@@ -2,6 +2,7 @@ package net.revilodev.aura.client.screen;
 
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
+import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 import net.neoforged.fml.loading.FMLPaths;
@@ -23,6 +24,13 @@ public final class LevelUpConfigScreen extends Screen {
     private static final int PAD_X = 16;
     private static final int TOP = 40;
     private static final int BOTTOM = 38;
+    private static final int INPUT_W = 90;
+
+    private EditBox levelHudColorInput;
+    private EditBox hudOffsetXInput;
+    private EditBox hudOffsetYInput;
+    private EditBox inventoryOffsetXInput;
+    private EditBox inventoryOffsetYInput;
 
     private static final class LevelUpConfigStore {
         boolean showTopCenterLevelOverlay = true;
@@ -30,9 +38,7 @@ public final class LevelUpConfigScreen extends Screen {
         boolean showInventoryLevelBar = true;
         String levelHudPosition = "top";
         boolean levelHudStayOnScreen = false;
-        int hudColorR = 0x53;
-        int hudColorG = 0xA4;
-        int hudColorB = 0xBC;
+        String levelHudColor = "#53A4BC";
         int hudLevelBarOffsetX = 0;
         int hudLevelBarOffsetY = 0;
         int inventoryLevelBarOffsetX = 0;
@@ -62,6 +68,7 @@ public final class LevelUpConfigScreen extends Screen {
         load();
         rows.clear();
         initRows();
+        initInputs();
         addRenderableWidget(Button.builder(Component.translatable("gui.aura.back"), b -> onClose()).bounds(width / 2 - 70, height - 26, 140, 20).build());
     }
 
@@ -72,14 +79,11 @@ public final class LevelUpConfigScreen extends Screen {
         rows.add(Row.bool("gui.aura.levelup.show_inventory_level_bar", () -> store.showInventoryLevelBar, v -> store.showInventoryLevelBar = v));
         rows.add(Row.enumTopBottom("gui.aura.levelup.level_hud_position", () -> store.levelHudPosition, v -> store.levelHudPosition = v));
         rows.add(Row.bool("gui.aura.levelup.level_hud_stay_on_screen", () -> store.levelHudStayOnScreen, v -> store.levelHudStayOnScreen = v));
-        rows.add(Row.readOnly("gui.aura.levelup.level_hud_color", () -> "#" + hex2(store.hudColorR) + hex2(store.hudColorG) + hex2(store.hudColorB)));
-        rows.add(Row.intRow("gui.aura.levelup.level_hud_color_r", () -> store.hudColorR, v -> store.hudColorR = v, 1, 0, 255));
-        rows.add(Row.intRow("gui.aura.levelup.level_hud_color_g", () -> store.hudColorG, v -> store.hudColorG = v, 1, 0, 255));
-        rows.add(Row.intRow("gui.aura.levelup.level_hud_color_b", () -> store.hudColorB, v -> store.hudColorB = v, 1, 0, 255));
-        rows.add(Row.intRow("gui.aura.levelup.hud_level_bar_offset_x", () -> store.hudLevelBarOffsetX, v -> store.hudLevelBarOffsetX = v, 1, -500, 500));
-        rows.add(Row.intRow("gui.aura.levelup.hud_level_bar_offset_y", () -> store.hudLevelBarOffsetY, v -> store.hudLevelBarOffsetY = v, 1, -500, 500));
-        rows.add(Row.intRow("gui.aura.levelup.inventory_level_bar_offset_x", () -> store.inventoryLevelBarOffsetX, v -> store.inventoryLevelBarOffsetX = v, 1, -500, 500));
-        rows.add(Row.intRow("gui.aura.levelup.inventory_level_bar_offset_y", () -> store.inventoryLevelBarOffsetY, v -> store.inventoryLevelBarOffsetY = v, 1, -500, 500));
+        rows.add(Row.textInput("gui.aura.levelup.level_hud_color"));
+        rows.add(Row.textInput("gui.aura.levelup.hud_level_bar_offset_x"));
+        rows.add(Row.textInput("gui.aura.levelup.hud_level_bar_offset_y"));
+        rows.add(Row.textInput("gui.aura.levelup.inventory_level_bar_offset_x"));
+        rows.add(Row.textInput("gui.aura.levelup.inventory_level_bar_offset_y"));
         rows.add(Row.action("gui.aura.levelup.open_hud_reposition", this::openHudReposition));
         rows.add(Row.action("gui.aura.levelup.open_inventory_reposition", this::openInventoryReposition));
 
@@ -104,6 +108,7 @@ public final class LevelUpConfigScreen extends Screen {
 
         int xLeft = PAD_X;
         int xRight = width - PAD_X;
+        positionInputs(xRight);
         int y0 = TOP;
         int y1 = height - BOTTOM;
         gg.enableScissor(0, y0, width, y1);
@@ -114,11 +119,10 @@ public final class LevelUpConfigScreen extends Screen {
             boolean hovered = mouseX >= xLeft && mouseX <= xRight && mouseY >= y && mouseY <= y + ROW_H - 1;
             int labelColor = row.section ? 0xFFE08A : (hovered ? 0xFFFF55 : 0xFFFFFF);
             gg.drawString(font, row.label(), xLeft, y + 2, labelColor, false);
+            if (row.textInput) continue;
             String state = row.currentState();
-            if (!state.isEmpty()) {
                 int stateW = font.width(state);
                 gg.drawString(font, state, xRight - stateW, y + 2, 0x6AB2FF, false);
-            }
         }
         gg.disableScissor();
         super.render(gg, mouseX, mouseY, partialTick);
@@ -130,7 +134,7 @@ public final class LevelUpConfigScreen extends Screen {
             int index = (int) ((mouseY - TOP + scroll) / ROW_H);
             if (index >= 0 && index < rows.size()) {
                 Row row = rows.get(index);
-                if (!row.section) {
+                if (!row.section && !row.textInput) {
                     row.adjust(button == 0 ? 1 : -1);
                     save();
                     return true;
@@ -149,12 +153,9 @@ public final class LevelUpConfigScreen extends Screen {
 
     @Override
     public void onClose() {
+        commitInputValues();
         save();
         minecraft.setScreen(parent);
-    }
-
-    private static String hex2(int c) {
-        return String.format(Locale.ROOT, "%02X", c & 0xFF);
     }
 
     private static int clampInt(int value, int min, int max) {
@@ -200,12 +201,7 @@ public final class LevelUpConfigScreen extends Screen {
         store.showInventoryLevelBar = readBool(client, "showInventoryLevelBar", store.showInventoryLevelBar);
         store.levelHudPosition = readString(client, "levelHudPosition", store.levelHudPosition);
         store.levelHudStayOnScreen = readBool(client, "levelHudStayOnScreen", store.levelHudStayOnScreen);
-        String color = readString(client, "levelHudColor", "#53a4bc");
-        if (color.startsWith("#") && color.length() == 7) {
-            store.hudColorR = Integer.parseInt(color.substring(1, 3), 16);
-            store.hudColorG = Integer.parseInt(color.substring(3, 5), 16);
-            store.hudColorB = Integer.parseInt(color.substring(5, 7), 16);
-        }
+        store.levelHudColor = normalizeColor(readString(client, "levelHudColor", "#53a4bc"), store.levelHudColor);
         store.hudLevelBarOffsetX = readInt(client, "hudLevelBarOffsetX", store.hudLevelBarOffsetX);
         store.hudLevelBarOffsetY = readInt(client, "hudLevelBarOffsetY", store.hudLevelBarOffsetY);
         store.inventoryLevelBarOffsetX = readInt(client, "inventoryLevelBarOffsetX", store.inventoryLevelBarOffsetX);
@@ -244,7 +240,7 @@ public final class LevelUpConfigScreen extends Screen {
                 store.showInventoryLevelBar,
                 store.levelHudPosition,
                 store.levelHudStayOnScreen,
-                "#" + hex2(store.hudColorR) + hex2(store.hudColorG) + hex2(store.hudColorB),
+                normalizeColor(store.levelHudColor, "#53A4BC"),
                 store.hudLevelBarOffsetX,
                 store.hudLevelBarOffsetY,
                 store.inventoryLevelBarOffsetX,
@@ -335,35 +331,122 @@ public final class LevelUpConfigScreen extends Screen {
         }
     }
 
-    private record Row(String labelKey, boolean section, StateSupplier state, IntConsumer clickHandler) {
+    private void initInputs() {
+        levelHudColorInput = addRenderableWidget(new EditBox(font, 0, 0, INPUT_W, 12, Component.translatable("gui.aura.levelup.level_hud_color")));
+        levelHudColorInput.setMaxLength(7);
+        levelHudColorInput.setValue(store.levelHudColor);
+
+        hudOffsetXInput = addRenderableWidget(new EditBox(font, 0, 0, INPUT_W, 12, Component.translatable("gui.aura.levelup.hud_level_bar_offset_x")));
+        hudOffsetXInput.setMaxLength(6);
+        hudOffsetXInput.setValue(Integer.toString(store.hudLevelBarOffsetX));
+
+        hudOffsetYInput = addRenderableWidget(new EditBox(font, 0, 0, INPUT_W, 12, Component.translatable("gui.aura.levelup.hud_level_bar_offset_y")));
+        hudOffsetYInput.setMaxLength(6);
+        hudOffsetYInput.setValue(Integer.toString(store.hudLevelBarOffsetY));
+
+        inventoryOffsetXInput = addRenderableWidget(new EditBox(font, 0, 0, INPUT_W, 12, Component.translatable("gui.aura.levelup.inventory_level_bar_offset_x")));
+        inventoryOffsetXInput.setMaxLength(6);
+        inventoryOffsetXInput.setValue(Integer.toString(store.inventoryLevelBarOffsetX));
+
+        inventoryOffsetYInput = addRenderableWidget(new EditBox(font, 0, 0, INPUT_W, 12, Component.translatable("gui.aura.levelup.inventory_level_bar_offset_y")));
+        inventoryOffsetYInput.setMaxLength(6);
+        inventoryOffsetYInput.setValue(Integer.toString(store.inventoryLevelBarOffsetY));
+    }
+
+    private void positionInputs(int xRight) {
+        positionInput(levelHudColorInput, "gui.aura.levelup.level_hud_color", xRight);
+        positionInput(hudOffsetXInput, "gui.aura.levelup.hud_level_bar_offset_x", xRight);
+        positionInput(hudOffsetYInput, "gui.aura.levelup.hud_level_bar_offset_y", xRight);
+        positionInput(inventoryOffsetXInput, "gui.aura.levelup.inventory_level_bar_offset_x", xRight);
+        positionInput(inventoryOffsetYInput, "gui.aura.levelup.inventory_level_bar_offset_y", xRight);
+    }
+
+    private void positionInput(EditBox box, String key, int xRight) {
+        if (box == null) return;
+        int index = rowIndex(key);
+        if (index < 0) {
+            box.visible = false;
+            box.active = false;
+            return;
+        }
+        int y = TOP + index * ROW_H - scroll;
+        boolean visible = y + ROW_H >= TOP && y <= height - BOTTOM;
+        box.setX(xRight - INPUT_W);
+        box.setY(y);
+        box.visible = visible;
+        box.active = visible;
+    }
+
+    private int rowIndex(String key) {
+        for (int i = 0; i < rows.size(); i++) {
+            if (rows.get(i).labelKey.equals(key)) return i;
+        }
+        return -1;
+    }
+
+    private void commitInputValues() {
+        if (levelHudColorInput != null) {
+            store.levelHudColor = normalizeColor(levelHudColorInput.getValue(), store.levelHudColor);
+            levelHudColorInput.setValue(store.levelHudColor);
+        }
+        store.hudLevelBarOffsetX = parseClampedInt(hudOffsetXInput, store.hudLevelBarOffsetX);
+        store.hudLevelBarOffsetY = parseClampedInt(hudOffsetYInput, store.hudLevelBarOffsetY);
+        store.inventoryLevelBarOffsetX = parseClampedInt(inventoryOffsetXInput, store.inventoryLevelBarOffsetX);
+        store.inventoryLevelBarOffsetY = parseClampedInt(inventoryOffsetYInput, store.inventoryLevelBarOffsetY);
+    }
+
+    private int parseClampedInt(EditBox box, int fallback) {
+        if (box == null) return fallback;
+        try {
+            int value = clampInt(Integer.parseInt(box.getValue().trim()), -500, 500);
+            box.setValue(Integer.toString(value));
+            return value;
+        } catch (Exception ignored) {
+            box.setValue(Integer.toString(fallback));
+            return fallback;
+        }
+    }
+
+    private static String normalizeColor(String raw, String fallback) {
+        if (raw == null) return fallback;
+        String value = raw.trim().toUpperCase(Locale.ROOT);
+        if (!value.startsWith("#")) value = "#" + value;
+        return value.matches("^#[0-9A-F]{6}$") ? value : fallback;
+    }
+
+    private record Row(String labelKey, boolean section, boolean textInput, StateSupplier state, IntConsumer clickHandler) {
         static Row section(String labelKey) {
-            return new Row(labelKey, true, () -> "", d -> {});
+            return new Row(labelKey, true, false, () -> "", d -> {});
         }
 
         static Row readOnly(String labelKey, StateSupplier state) {
-            return new Row(labelKey, false, state, d -> {});
+            return new Row(labelKey, false, false, state, d -> {});
+        }
+
+        static Row textInput(String labelKey) {
+            return new Row(labelKey, false, true, () -> "", d -> {});
         }
 
         static Row action(String labelKey, Runnable action) {
-            return new Row(labelKey, false, () -> Component.translatable("gui.aura.open").getString(), d -> {
+            return new Row(labelKey, false, false, () -> Component.translatable("gui.aura.open").getString(), d -> {
                 if (d > 0) action.run();
             });
         }
 
         static Row bool(String labelKey, BoolGetter getter, BoolSetter setter) {
-            return new Row(labelKey, false, () -> Component.translatable(getter.get() ? "gui.aura.state.enabled" : "gui.aura.state.disabled").getString(), d -> setter.set(!getter.get()));
+            return new Row(labelKey, false, false, () -> Component.translatable(getter.get() ? "gui.aura.state.enabled" : "gui.aura.state.disabled").getString(), d -> setter.set(!getter.get()));
         }
 
         static Row enumTopBottom(String labelKey, StringGetter getter, StringSetter setter) {
-            return new Row(labelKey, false, getter::get, d -> setter.set("top".equalsIgnoreCase(getter.get()) ? "bottom" : "top"));
+            return new Row(labelKey, false, false, getter::get, d -> setter.set("top".equalsIgnoreCase(getter.get()) ? "bottom" : "top"));
         }
 
         static Row intRow(String labelKey, IntGetter getter, IntSetter setter, int step, int min, int max) {
-            return new Row(labelKey, false, () -> Integer.toString(getter.get()), d -> setter.set(clampInt(getter.get() + (d > 0 ? step : -step), min, max)));
+            return new Row(labelKey, false, false, () -> Integer.toString(getter.get()), d -> setter.set(clampInt(getter.get() + (d > 0 ? step : -step), min, max)));
         }
 
         static Row doubleRow(String labelKey, DoubleGetter getter, DoubleSetter setter, double step, double min, double max) {
-            return new Row(labelKey, false, () -> String.format(Locale.ROOT, "%.2f", getter.get()), d -> {
+            return new Row(labelKey, false, false, () -> String.format(Locale.ROOT, "%.2f", getter.get()), d -> {
                 double next = getter.get() + (d > 0 ? step : -step);
                 setter.set(Math.max(min, Math.min(max, next)));
             });
