@@ -103,6 +103,8 @@ public final class LevelUpConfigScreen extends Screen {
     @Override
     public void render(GuiGraphics gg, int mouseX, int mouseY, float partialTick) {
         renderBackground(gg, mouseX, mouseY, partialTick);
+        gg.pose().pushPose();
+        gg.pose().translate(0.0F, 0.0F, 200.0F);
         gg.drawCenteredString(font, title, width / 2, 12, 0xFFFFFF);
         gg.drawCenteredString(font, Component.translatable("gui.aura.levelup.hint"), width / 2, 24, 0xAFAFAF);
 
@@ -126,6 +128,7 @@ public final class LevelUpConfigScreen extends Screen {
         }
         gg.disableScissor();
         super.render(gg, mouseX, mouseY, partialTick);
+        gg.pose().popPose();
     }
 
     @Override

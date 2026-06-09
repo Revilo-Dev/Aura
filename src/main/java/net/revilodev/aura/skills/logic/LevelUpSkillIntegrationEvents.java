@@ -31,13 +31,8 @@ public final class LevelUpSkillIntegrationEvents {
         int interval = Math.max(1, AbilityConfig.pointIntervalLevels());
         int oldThresholds = Math.max(0, event.getOldLevel()) / interval;
         int newThresholds = Math.max(0, event.getNewLevel()) / interval;
-        int abilityPointsGained = sumTo(newThresholds) - sumTo(oldThresholds);
+        int abilityPointsGained = newThresholds - oldThresholds;
 
         SkillsNetwork.sendLevelUpToast(player, event.getOldLevel(), event.getNewLevel(), skillPointsGained, abilityPointsGained);
-    }
-
-    private static int sumTo(int n) {
-        if (n <= 0) return 0;
-        return (n * (n + 1)) / 2;
     }
 }

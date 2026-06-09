@@ -12,6 +12,7 @@ import net.neoforged.neoforge.network.PacketDistributor;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.api.distmarker.OnlyIn;
 import net.revilodev.aura.CodexMod;
+import net.revilodev.aura.attributes.CodexAttributes;
 import net.revilodev.aura.skills.PlayerSkills;
 import net.revilodev.aura.skills.SkillDefinition;
 import net.revilodev.aura.skills.SkillId;
@@ -111,12 +112,14 @@ public final class SkillListWidget extends AbstractWidget {
     protected void renderWidget(GuiGraphics gg, int mouseX, int mouseY, float pt) {
         if (!visible || mc.player == null) return;
         PlayerSkills ps = mc.player.getData(SkillsAttachments.PLAYER_SKILLS.get());
+        boolean editLocked = CodexAttributes.isAbilitySkillEditLocked(mc.player);
         if (headerVisible) {
             drawScaledText(gg, Component.translatable("gui.aura.points.skill_short", ps.points()).getString(), getX() + 1, getY() + 4, 0x6AB2FF, POINTS_TEXT_SCALE);
         }
 
         int top = getY() + HEADER_HEIGHT;
         RenderSystem.enableBlend();
+        gg.enableScissor(getX(), top, getX() + width, getY() + height);
         for (Node node : nodes) {
             if (node.def.primary() || node.row <= 0) continue;
 
@@ -132,14 +135,15 @@ public final class SkillListWidget extends AbstractWidget {
             int x = getX() + node.col * (CELL_SIZE + GAP);
             int y = top + node.row * (CELL_SIZE + GAP);
             SkillDefinition def = node.def;
-            boolean hovered = mouseX >= x && mouseX <= x + CELL_SIZE && mouseY >= y && mouseY <= y + CELL_SIZE;
+            boolean hovered = isNodeVisible(x, y)
+                    && mouseX >= x && mouseX <= x + CELL_SIZE && mouseY >= y && mouseY <= y + CELL_SIZE;
             boolean learned = ps.level(def.id()) > 0;
 
             boolean unlocked = def.primary() || ps.canUnlock(def.id());
             ResourceLocation tex;
             if (def.primary() && !learned) {
                 tex = WIDGET_PRIMARY_DISABLED_TEX;
-            } else if (!unlocked) {
+            } else if (editLocked || !unlocked) {
                 tex = hovered ? WIDGET_DISABLED_HOVER_TEX : WIDGET_DISABLED_TEX;
             } else if (def.primary()) {
                 tex = (selected == def.id() || hovered) ? WIDGET_PRIMARY_HOVER_TEX : WIDGET_PRIMARY_TEX;
@@ -151,6 +155,7 @@ public final class SkillListWidget extends AbstractWidget {
             int iconY = y + (CELL_SIZE - ICON_SIZE) / 2;
             gg.blit(def.icon(), iconX, iconY, 0, 0, ICON_SIZE, ICON_SIZE, ICON_SIZE, ICON_SIZE);
             if (hovered) {
+                gg.disableScissor();
                 Component name = Component.literal(def.title()).withStyle(def.primary() ? ChatFormatting.GOLD : ChatFormatting.WHITE);
                 List<Component> lines = List.of(
                         Component.empty()
@@ -162,8 +167,10 @@ public final class SkillListWidget extends AbstractWidget {
                         Component.translatable("gui.aura.hint.right_downgrade").withStyle(ChatFormatting.RED)
                 );
                 gg.renderTooltip(mc.font, lines, java.util.Optional.empty(), mouseX, mouseY);
+                gg.enableScissor(getX(), top, getX() + width, getY() + height);
             }
         }
+        gg.disableScissor();
     }
 
     @Override
@@ -177,6 +184,7 @@ public final class SkillListWidget extends AbstractWidget {
         }
         selected = node.def.id();
         if (onClick != null) onClick.accept(node.def);
+        if (CodexAttributes.isAbilitySkillEditLocked(mc.player)) return true;
         if (button == 0) {
             PacketDistributor.sendToServer(new SkillsNetwork.SkillActionPayload(node.def.id().ordinal(), true));
         } else if (button == 1) {
@@ -206,11 +214,19 @@ public final class SkillListWidget extends AbstractWidget {
         for (Node node : nodes) {
             int x = getX() + node.col * (CELL_SIZE + GAP);
             int y = top + node.row * (CELL_SIZE + GAP);
-            if (mx >= x && mx <= x + CELL_SIZE && my >= y && my <= y + CELL_SIZE) {
+            if (isNodeVisible(x, y) && mx >= x && mx <= x + CELL_SIZE && my >= y && my <= y + CELL_SIZE) {
                 return node;
             }
         }
         return null;
+    }
+
+    private boolean isNodeVisible(int x, int y) {
+        int top = getY() + HEADER_HEIGHT;
+        int bottom = getY() + height;
+        int left = getX();
+        int right = getX() + width;
+        return x + CELL_SIZE > left && x < right && y + CELL_SIZE > top && y < bottom;
     }
 
     private void drawScaledTile(GuiGraphics gg, ResourceLocation tex, int x, int y, int w, int h) {

@@ -45,7 +45,7 @@ public final class PlayerAbilities implements INBTSerializable<CompoundTag> {
     public boolean tryUpgrade(AbilityId id) {
         if (!canUpgrade(id)) return false;
         int cur = rank(id);
-        points--;
+        points -= upgradeCost(id);
         ranks.put(id, cur + 1);
         return true;
     }
@@ -55,7 +55,7 @@ public final class PlayerAbilities implements INBTSerializable<CompoundTag> {
         int cur = rank(id);
         int next = cur - 1;
         ranks.put(id, next);
-        points++;
+        points += cur;
         if (next <= 0) {
             cooldowns.remove(id);
             activeTicks.remove(id);
@@ -67,9 +67,14 @@ public final class PlayerAbilities implements INBTSerializable<CompoundTag> {
     public boolean canUpgrade(AbilityId id) {
         if (id == null || !AbilityConfig.enabled(id)) return false;
         int cur = rank(id);
-        if (cur >= id.maxRank() || points <= 0) return false;
+        if (cur >= id.maxRank() || points < upgradeCost(id)) return false;
         if (id.required() != null && rank(id.required()) <= 0) return false;
         return true;
+    }
+
+    public int upgradeCost(AbilityId id) {
+        if (id == null) return Integer.MAX_VALUE;
+        return rank(id) + 1;
     }
 
     public boolean canDowngrade(AbilityId id) {

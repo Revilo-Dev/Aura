@@ -21,6 +21,7 @@ import net.revilodev.aura.abilities.AbilityId;
 import net.revilodev.aura.abilities.AbilityRegistry;
 import net.revilodev.aura.abilities.AbilitySpecialization;
 import net.revilodev.aura.abilities.PlayerAbilities;
+import net.revilodev.aura.attributes.CodexAttributes;
 import net.revilodev.aura.abilities.logic.AbilityScaling;
 import net.revilodev.aura.skills.PlayerSkills;
 import net.revilodev.aura.skills.SkillsAttachments;
@@ -185,6 +186,7 @@ public final class AbilityListWidget extends AbstractWidget {
         if (!visible || mc.player == null) return;
         PlayerAbilities abilities = mc.player.getData(AbilitiesAttachments.PLAYER_ABILITIES.get());
         PlayerSkills skills = mc.player.getData(SkillsAttachments.PLAYER_SKILLS.get());
+        boolean editLocked = CodexAttributes.isAbilitySkillEditLocked(mc.player);
         if (!showLocked) {
             reloadAbilities();
         }
@@ -202,7 +204,6 @@ public final class AbilityListWidget extends AbstractWidget {
         offsetY = Math.max(0, Math.min(offsetY, maxOffsetY));
 
         int top = viewportY;
-        Component hoveredTooltip = null;
         RenderSystem.enableBlend();
         gg.enableScissor(viewportX, viewportY, viewportX + viewportW, viewportY + viewportH);
         for (Node node : nodes) {
@@ -219,7 +220,8 @@ public final class AbilityListWidget extends AbstractWidget {
             int x = viewportX + node.col * (CELL_SIZE + GAP) - offsetX;
             int y = top + node.row * (CELL_SIZE + GAP) - offsetY;
             AbilityDefinition def = node.def;
-            boolean hovered = mouseX >= x && mouseX <= x + CELL_SIZE && mouseY >= y && mouseY <= y + CELL_SIZE;
+            boolean hovered = isNodeVisible(x, y, viewportX, viewportY, viewportW, viewportH)
+                    && mouseX >= x && mouseX <= x + CELL_SIZE && mouseY >= y && mouseY <= y + CELL_SIZE;
             int rank = abilities.rank(def.id());
             boolean unlocked = rank > 0;
             boolean maxed = rank >= def.maxRank();
@@ -249,22 +251,25 @@ public final class AbilityListWidget extends AbstractWidget {
                 int lvl = abilities.rank(def.id().core());
                 Component name = Component.literal(def.title()).withStyle(def.type() == net.revilodev.aura.abilities.AbilityNodeType.CORE ? ChatFormatting.GOLD : ChatFormatting.WHITE);
                 List<StatPart> stats = statParts(def.id(), Math.max(1, lvl), skills);
-                hoveredTooltip = null;
+                List<Component> tooltip = new ArrayList<>();
+                tooltip.add(Component.empty()
+                        .append(name)
+                        .append(Component.literal(" "))
+                        .append(Component.translatable("gui.aura.level.short", lvl).withStyle(ChatFormatting.LIGHT_PURPLE)));
+                tooltip.add(Component.literal(def.description()).withStyle(ChatFormatting.GRAY));
+                tooltip.add(styledStatLine(stats));
+                if (def.type() == net.revilodev.aura.abilities.AbilityNodeType.CORE) {
+                    int cost = abilities.upgradeCost(def.id());
+                    tooltip.add(Component.literal("Upgrade cost: " + cost + " point" + (cost == 1 ? "" : "s")).withStyle(ChatFormatting.YELLOW));
+                }
+                tooltip.add(Component.translatable(def.type() == net.revilodev.aura.abilities.AbilityNodeType.CORE
+                        ? "gui.aura.hint.left_upgrade"
+                        : "gui.aura.hint.click_select").withStyle(ChatFormatting.GREEN));
+                tooltip.add(Component.translatable(def.type() == net.revilodev.aura.abilities.AbilityNodeType.CORE
+                        ? "gui.aura.hint.right_downgrade"
+                        : "gui.aura.empty").withStyle(ChatFormatting.RED));
                 gg.disableScissor();
-                gg.renderTooltip(mc.font, List.of(
-                        Component.empty()
-                                .append(name)
-                                .append(Component.literal(" "))
-                                .append(Component.translatable("gui.aura.level.short", lvl).withStyle(ChatFormatting.LIGHT_PURPLE)),
-                        Component.literal(def.description()).withStyle(ChatFormatting.GRAY),
-                        styledStatLine(stats),
-                        Component.translatable(def.type() == net.revilodev.aura.abilities.AbilityNodeType.CORE
-                                ? "gui.aura.hint.left_upgrade"
-                                : "gui.aura.hint.click_select").withStyle(ChatFormatting.GREEN),
-                        Component.translatable(def.type() == net.revilodev.aura.abilities.AbilityNodeType.CORE
-                                ? "gui.aura.hint.right_downgrade"
-                                : "gui.aura.empty").withStyle(ChatFormatting.RED)
-                ), java.util.Optional.empty(), mouseX, mouseY - 4);
+                gg.renderTooltip(mc.font, tooltip, java.util.Optional.empty(), mouseX, mouseY - 4);
                 gg.enableScissor(viewportX, viewportY, viewportX + viewportW, viewportY + viewportH);
             }
         }
@@ -281,10 +286,12 @@ public final class AbilityListWidget extends AbstractWidget {
             return true;
         }
         PlayerAbilities abilities = mc.player.getData(AbilitiesAttachments.PLAYER_ABILITIES.get());
+        boolean editLocked = CodexAttributes.isAbilitySkillEditLocked(mc.player);
         selected = node.def.id();
         if (onClick != null) onClick.accept(node.def);
         boolean isCore = node.def.type() == net.revilodev.aura.abilities.AbilityNodeType.CORE;
         boolean isSpecialization = node.def.type() == net.revilodev.aura.abilities.AbilityNodeType.SPECIALIZATION;
+        if (editLocked) return true;
         if (isCore) {
             if (button == 0) {
                 PacketDistributor.sendToServer(new AbilitiesNetwork.AbilityActionPayload(0, node.def.id().ordinal()));
@@ -302,15 +309,25 @@ public final class AbilityListWidget extends AbstractWidget {
 
     private Node nodeAt(double mx, double my) {
         int viewportX = getX() + VIEWPORT_OFFSET_X + viewportExtraOffsetX;
-        int top = getY() + HEADER_HEIGHT + VIEWPORT_OFFSET_Y + viewportExtraOffsetY;
+        int viewportY = getY() + HEADER_HEIGHT + VIEWPORT_OFFSET_Y + viewportExtraOffsetY;
+        int viewportW = Math.min(width, VIEWPORT_W + viewportExtraWidth);
+        int viewportH = Math.min(height - HEADER_HEIGHT, VIEWPORT_H);
         for (Node node : nodes) {
             int x = viewportX + node.col * (CELL_SIZE + GAP) - offsetX;
-            int y = top + node.row * (CELL_SIZE + GAP) - offsetY;
-            if (mx >= x && mx <= x + CELL_SIZE && my >= y && my <= y + CELL_SIZE) {
+            int y = viewportY + node.row * (CELL_SIZE + GAP) - offsetY;
+            if (isNodeVisible(x, y, viewportX, viewportY, viewportW, viewportH)
+                    && mx >= x && mx <= x + CELL_SIZE && my >= y && my <= y + CELL_SIZE) {
                 return node;
             }
         }
         return null;
+    }
+
+    private boolean isNodeVisible(int x, int y, int viewportX, int viewportY, int viewportW, int viewportH) {
+        return x + CELL_SIZE > viewportX
+                && x < viewportX + viewportW
+                && y + CELL_SIZE > viewportY
+                && y < viewportY + viewportH;
     }
 
     public boolean mouseScrolled(double mouseX, double mouseY, double deltaY) {

@@ -19,16 +19,11 @@ public final class AbilityLevelIntegrationEvents {
         int interval = Math.max(1, AbilityConfig.pointIntervalLevels());
         int oldThresholds = Math.max(0, event.getOldLevel()) / interval;
         int newThresholds = Math.max(0, event.getNewLevel()) / interval;
-        int gained = sumTo(newThresholds) - sumTo(oldThresholds);
+        int gained = newThresholds - oldThresholds;
         if (gained <= 0) return;
 
         PlayerAbilities abilities = player.getData(AbilitiesAttachments.PLAYER_ABILITIES.get());
         abilities.addPoints(gained);
         AbilitySyncEvents.markDirty(player);
-    }
-
-    private static int sumTo(int n) {
-        if (n <= 0) return 0;
-        return (n * (n + 1)) / 2;
     }
 }

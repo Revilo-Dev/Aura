@@ -10,8 +10,10 @@ import net.neoforged.neoforge.network.PacketDistributor;
 import net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 import net.neoforged.neoforge.network.registration.PayloadRegistrar;
+import net.revilodev.aura.ClientRuntimeBridge;
 import net.revilodev.aura.CodexMod;
 import net.revilodev.aura.abilities.event.AbilitySwitchEvent;
+import net.revilodev.aura.attributes.CodexAttributes;
 import net.revilodev.aura.abilities.logic.AbilityLogic;
 import net.revilodev.aura.abilities.logic.AbilitySyncEvents;
 import net.neoforged.neoforge.common.NeoForge;
@@ -39,17 +41,19 @@ public final class AbilitiesNetwork {
 
     private static void handleSync(AbilitiesSyncPayload payload, IPayloadContext ctx) {
         ctx.enqueueWork(() -> {
-            if (ctx.player() == null) return;
-            PlayerAbilities abilities = ctx.player().getData(AbilitiesAttachments.PLAYER_ABILITIES.get());
+            var player = ctx.player() != null ? ctx.player() : ClientRuntimeBridge.getClientPlayer();
+            if (player == null) return;
+            PlayerAbilities abilities = player.getData(AbilitiesAttachments.PLAYER_ABILITIES.get());
             CompoundTag tag = payload.data();
             if (tag == null) tag = new CompoundTag();
-            abilities.deserializeNBT(ctx.player().level().registryAccess(), tag);
+            abilities.deserializeNBT(player.level().registryAccess(), tag);
         });
     }
 
     private static void handleAction(AbilityActionPayload payload, IPayloadContext ctx) {
         ctx.enqueueWork(() -> {
             if (!(ctx.player() instanceof ServerPlayer player)) return;
+            if (CodexAttributes.isAbilitySkillEditLocked(player)) return;
             PlayerAbilities abilities = player.getData(AbilitiesAttachments.PLAYER_ABILITIES.get());
             AbilityId id = AbilityId.byOrdinal(payload.abilityOrdinal());
             boolean changed = switch (payload.action()) {

@@ -20,6 +20,7 @@ import net.revilodev.aura.abilities.AbilityDefinition;
 import net.revilodev.aura.abilities.AbilityId;
 import net.revilodev.aura.abilities.AbilitySpecialization;
 import net.revilodev.aura.abilities.PlayerAbilities;
+import net.revilodev.aura.attributes.CodexAttributes;
 import net.revilodev.aura.abilities.logic.AbilityScaling;
 import net.revilodev.aura.skills.PlayerSkills;
 import net.revilodev.aura.skills.SkillsAttachments;
@@ -128,12 +129,13 @@ public final class AbilityDetailsPanel extends AbstractWidget {
 
         PlayerAbilities abilities = mc.player.getData(AbilitiesAttachments.PLAYER_ABILITIES.get());
         PlayerSkills skills = mc.player.getData(SkillsAttachments.PLAYER_SKILLS.get());
+        boolean editLocked = CodexAttributes.isAbilitySkillEditLocked(mc.player);
         int level = abilities.rank(ability.id());
         int displayLevel = ability.type() == net.revilodev.aura.abilities.AbilityNodeType.SPECIALIZATION
                 ? abilities.rank(ability.id().core())
                 : level;
-        boolean canUp = !AuraClientConfig.blockUpgradeDowngrade() && abilities.canUpgrade(ability.id());
-        boolean canDown = !AuraClientConfig.blockUpgradeDowngrade() && abilities.canDowngrade(ability.id());
+        boolean canUp = !editLocked && !AuraClientConfig.blockUpgradeDowngrade() && abilities.canUpgrade(ability.id());
+        boolean canDown = !editLocked && !AuraClientConfig.blockUpgradeDowngrade() && abilities.canDowngrade(ability.id());
         boolean specialization = ability.type() == net.revilodev.aura.abilities.AbilityNodeType.SPECIALIZATION;
 
         gg.blit(ability.iconTexture(), x + 3, y + 4, 0, 0, HEADER_ICON_SIZE, HEADER_ICON_SIZE, HEADER_ICON_SIZE, HEADER_ICON_SIZE);
@@ -174,6 +176,12 @@ public final class AbilityDetailsPanel extends AbstractWidget {
         textY = drawSmallWrapped(gg, ability.description(), x + 4, textY, w - 8, 0xE2E2E2) + 3;
         int scaledWidth = Math.max(1, Mth.floor((w - 8) / SMALL_TEXT_SCALE));
         drawAbilityStatLine(gg, x + 4, textY, scaledWidth, ability.id(), Math.max(1, displayLevel), skills);
+        if (!specialization) {
+            textY += SMALL_LINE_STEP + 1;
+            int cost = abilities.upgradeCost(ability.id());
+            int costColor = canUp ? 0xF0D15C : 0xA0A0A0;
+            drawSmallWrapped(gg, "upgrade cost: " + cost + " point" + (cost == 1 ? "" : "s"), x + 4, textY, w - 8, costColor);
+        }
         gg.disableScissor();
 
         if (keyHovered) {
@@ -185,7 +193,7 @@ public final class AbilityDetailsPanel extends AbstractWidget {
         upgrade.visible = !specialization;
         downgrade.visible = !specialization;
         select.visible = specialization;
-        select.active = specialization && !AuraClientConfig.blockAbilitySwitching();
+        select.active = specialization && !editLocked && !AuraClientConfig.blockAbilitySwitching();
     }
 
     @Override
@@ -220,6 +228,9 @@ public final class AbilityDetailsPanel extends AbstractWidget {
         int scaledWidth = Math.max(1, Mth.floor((width - 8) / SMALL_TEXT_SCALE));
         int lines = mc.font.split(Component.literal(ability.description()), scaledWidth).size();
         lines += mc.font.split(Component.literal(abilityStatText(ability.id(), level, skills)), scaledWidth).size();
+        if (ability.type() != net.revilodev.aura.abilities.AbilityNodeType.SPECIALIZATION) {
+            lines += mc.font.split(Component.literal("upgrade cost: 999 points"), scaledWidth).size();
+        }
         return lines * SMALL_LINE_STEP;
     }
 

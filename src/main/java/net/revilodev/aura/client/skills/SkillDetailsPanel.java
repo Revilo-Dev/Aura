@@ -12,6 +12,7 @@ import net.neoforged.api.distmarker.Dist;
 import net.neoforged.api.distmarker.OnlyIn;
 import net.neoforged.neoforge.network.PacketDistributor;
 import net.revilodev.aura.CodexMod;
+import net.revilodev.aura.attributes.CodexAttributes;
 import net.revilodev.aura.client.AuraClientConfig;
 import net.revilodev.aura.skills.PlayerSkills;
 import net.revilodev.aura.skills.SkillBalance;
@@ -117,12 +118,13 @@ public final class SkillDetailsPanel extends AbstractWidget {
         gg.fill(x, y, x + w, y + h, 0xFF373737);
         gg.hLine(x, x + w, y, 0xAA5A5A5A);
         PlayerSkills ps = mc.player.getData(SkillsAttachments.PLAYER_SKILLS.get());
+        boolean editLocked = CodexAttributes.isAbilitySkillEditLocked(mc.player);
         int level = ps.level(skill.id());
         boolean unlocked = ps.canUnlock(skill.id());
-        boolean canUp = !AuraClientConfig.blockUpgradeDowngrade() && unlocked
+        boolean canUp = !editLocked && !AuraClientConfig.blockUpgradeDowngrade() && unlocked
                 && level < skill.maxLevel()
                 && ps.points() > 0;
-        boolean canDown = !AuraClientConfig.blockUpgradeDowngrade() && ps.canDowngrade(skill.id());
+        boolean canDown = !editLocked && !AuraClientConfig.blockUpgradeDowngrade() && ps.canDowngrade(skill.id());
         gg.blit(skill.icon(), x + 4, y + 4, 0, 0, HEADER_ICON_SIZE, HEADER_ICON_SIZE, HEADER_ICON_SIZE, HEADER_ICON_SIZE);
         drawScaledText(gg, skill.title(), x + 18, y + 5, 0xFFFFFF, HEADER_TEXT_SCALE);
         drawScaledText(gg, "level: " + level + "/" + skill.maxLevel(), x + 18, y + 11, 0xD0D0D0, HEADER_TEXT_SCALE);

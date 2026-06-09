@@ -20,6 +20,8 @@ public final class CodexAttributes {
     public static final DeferredRegister<Attribute> REGISTER = DeferredRegister.create(Registries.ATTRIBUTE, CodexMod.MOD_ID);
     public static final Holder<Attribute> ABILITY_POWER = REGISTER.register("ability_power",
             () -> new RangedAttribute("attribute.name.aura.ability_power", 1.0D, 0.0D, 1024.0D).setSyncable(true));
+    public static final Holder<Attribute> ABILITY_SKILL_EDIT_LOCK = REGISTER.register("ability_skill_edit_lock",
+            () -> new RangedAttribute("attribute.name.aura.ability_skill_edit_lock", 0.0D, 0.0D, 1.0D).setSyncable(true));
 
     private CodexAttributes() {}
 
@@ -48,7 +50,14 @@ public final class CodexAttributes {
         return instance == null ? 1.0D : instance.getValue();
     }
 
+    public static boolean isAbilitySkillEditLocked(LivingEntity entity) {
+        if (entity == null) return false;
+        AttributeInstance instance = entity.getAttribute(ABILITY_SKILL_EDIT_LOCK);
+        return instance != null && instance.getValue() > 0.0D;
+    }
+
     private static void onEntityAttributeModification(EntityAttributeModificationEvent event) {
         event.add(EntityType.PLAYER, ABILITY_POWER, 1.0D);
+        event.add(EntityType.PLAYER, ABILITY_SKILL_EDIT_LOCK, 0.0D);
     }
 }

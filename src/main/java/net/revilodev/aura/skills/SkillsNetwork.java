@@ -7,15 +7,13 @@ import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
-import net.neoforged.api.distmarker.Dist;
-import net.neoforged.api.distmarker.OnlyIn;
 import net.neoforged.neoforge.network.PacketDistributor;
 import net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 import net.neoforged.neoforge.network.registration.PayloadRegistrar;
+import net.revilodev.aura.ClientRuntimeBridge;
 import net.revilodev.aura.CodexMod;
-import net.revilodev.aura.client.toast.LevelUpToast;
-import net.revilodev.aura.client.AuraClientConfig;
+import net.revilodev.aura.attributes.CodexAttributes;
 import net.revilodev.aura.skills.logic.SkillLogic;
 
 public final class SkillsNetwork {
@@ -55,37 +53,31 @@ public final class SkillsNetwork {
 
     private static void handleSync(SkillsSyncPayload payload, IPayloadContext ctx) {
         ctx.enqueueWork(() -> {
-            if (ctx.player() == null) return;
+            var player = ctx.player() != null ? ctx.player() : ClientRuntimeBridge.getClientPlayer();
+            if (player == null) return;
 
-            PlayerSkills skills = ctx.player().getData(SkillsAttachments.PLAYER_SKILLS.get());
+            PlayerSkills skills = player.getData(SkillsAttachments.PLAYER_SKILLS.get());
             CompoundTag tag = payload.data();
             if (tag == null) tag = new CompoundTag();
 
-            skills.deserializeNBT(ctx.player().level().registryAccess(), tag);
+            skills.deserializeNBT(player.level().registryAccess(), tag);
 
-            if (ctx.player().level().isClientSide()) ClientOnly.afterSync();
+            if (player.level().isClientSide()) ClientRuntimeBridge.afterSkillsSync();
         });
     }
 
     private static void handleOpenSkillsBook(OpenSkillsBookPayload payload, IPayloadContext ctx) {
-        ctx.enqueueWork(() -> {
-            if (ctx.player() != null && ctx.player().level().isClientSide()) {
-                ClientOnly.openSkillsBook();
-            }
-        });
+        ctx.enqueueWork(ClientRuntimeBridge::openSkillsBook);
     }
 
     private static void handleLevelUpToast(LevelUpToastPayload payload, IPayloadContext ctx) {
-        ctx.enqueueWork(() -> {
-            if (ctx.player() != null && ctx.player().level().isClientSide()) {
-                ClientOnly.showLevelUpToast(payload.oldLevel(), payload.newLevel(), payload.skillPointsGained(), payload.abilityPointsGained());
-            }
-        });
+        ctx.enqueueWork(() -> ClientRuntimeBridge.showLevelUpToast(payload.oldLevel(), payload.newLevel(), payload.skillPointsGained(), payload.abilityPointsGained()));
     }
 
     private static void handleAction(SkillActionPayload payload, IPayloadContext ctx) {
         ctx.enqueueWork(() -> {
             if (!(ctx.player() instanceof ServerPlayer sp)) return;
+            if (CodexAttributes.isAbilitySkillEditLocked(sp)) return;
 
             SkillId[] vals = SkillId.values();
             int ord = payload.skillOrdinal();
@@ -167,23 +159,6 @@ public final class SkillsNetwork {
         @Override
         public Type<? extends CustomPacketPayload> type() {
             return TYPE;
-        }
-    }
-
-    @OnlyIn(Dist.CLIENT)
-    private static final class ClientOnly {
-        private static void openSkillsBook() {
-            if (AuraClientConfig.blockOpenSkillsAbilitiesPanel()) return;
-            net.minecraft.client.Minecraft.getInstance()
-                    .setScreen(new net.revilodev.aura.client.screen.StandaloneSkillsBookScreen());
-        }
-
-        private static void afterSync() {
-        }
-
-        private static void showLevelUpToast(int oldLevel, int newLevel, int skillPointsGained, int abilityPointsGained) {
-            if (newLevel <= oldLevel) return;
-            LevelUpToast.show(oldLevel, newLevel, skillPointsGained, abilityPointsGained);
         }
     }
 }
