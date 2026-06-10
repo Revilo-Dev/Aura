@@ -1,9 +1,5 @@
 package net.revilodev.aura.skills.logic;
 
-import com.revilo.levelup.api.LevelUpApi;
-import com.revilo.levelup.api.LevelUpSources;
-import com.revilo.levelup.config.LevelUpConfig;
-import com.revilo.levelup.registry.LevelUpTags;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.tags.DamageTypeTags;
@@ -11,18 +7,14 @@ import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.LivingEntity;
-import net.minecraft.world.entity.MobCategory;
 import net.minecraft.world.entity.ai.attributes.AttributeInstance;
 import net.minecraft.world.entity.ai.attributes.AttributeModifier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
-import net.minecraft.world.entity.monster.Enemy;
 import net.revilodev.aura.CodexMod;
 import net.revilodev.aura.skills.PlayerSkills;
 import net.revilodev.aura.skills.SkillBalance;
 import net.revilodev.aura.skills.SkillId;
 
-import java.lang.reflect.Field;
-import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
@@ -35,7 +27,6 @@ public final class SkillLogic {
     private static final ResourceLocation MOD_MOVEMENT_SPEED = ResourceLocation.fromNamespaceAndPath(CodexMod.MOD_ID, "skill_agility");
     private static final ResourceLocation MOD_KB_RES = ResourceLocation.fromNamespaceAndPath(CodexMod.MOD_ID, "skill_knockback_res");
     private static final ResourceLocation MOD_LUCK = ResourceLocation.fromNamespaceAndPath(CodexMod.MOD_ID, "skill_luck");
-    private static final ResourceLocation SOURCE_SURVIVAL_PREVENTED = ResourceLocation.fromNamespaceAndPath(CodexMod.MOD_ID, "survival_prevented");
     private static final Map<UUID, Streak> COMBAT_STREAK = new HashMap<>();
     private static final int COMBAT_WINDOW_TICKS = 200;
 
@@ -56,44 +47,15 @@ public final class SkillLogic {
     }
 
     public static boolean awardCombatKill(ServerPlayer killer, LivingEntity victim) {
-        if (killer == null || victim == null) return false;
-        if (!shouldAwardLevelUpCombatXp(victim)) return false;
-        int xp = combatKillXp(victim);
-        float mult = streakMultiplier(COMBAT_STREAK, killer.getUUID(), killer.tickCount, COMBAT_WINDOW_TICKS, 0.06F, 1.6F);
-        int out = clampInt(Math.round(xp * mult), 1, 120);
-        LevelUpApi.awardXp(killer, out, LevelUpSources.MOB_KILL);
-        return true;
+        return false;
     }
 
     public static boolean awardSurvivalPrevented(ServerPlayer player, float preventedBySkills) {
-        if (player == null) return false;
-        int xp = survivalPreventedXp(preventedBySkills);
-        if (xp <= 0) return false;
-        LevelUpApi.awardXp(player, xp, SOURCE_SURVIVAL_PREVENTED);
-        return true;
+        return false;
     }
 
     public static int requiredLevelForNextRank(SkillId id, int currentSkillLevel) {
         return 1;
-    }
-
-    public static int combatKillXp(LivingEntity victim) {
-        int hp = (int) Math.ceil(Math.max(1.0F, victim.getMaxHealth()));
-        int armor = Math.max(0, victim.getArmorValue());
-        float catMult;
-        MobCategory cat = victim.getType().getCategory();
-        if (cat == MobCategory.MONSTER) catMult = 1.0F;
-        else if (cat == MobCategory.CREATURE) catMult = 0.35F;
-        else if (cat == MobCategory.WATER_CREATURE) catMult = 0.45F;
-        else if (cat == MobCategory.AMBIENT) catMult = 0.15F;
-        else catMult = 0.20F;
-        int base = 6 + (hp / 4) + (armor / 2);
-        return clampInt(Math.round(base * catMult), 1, 80);
-    }
-
-    public static int survivalPreventedXp(float preventedBySkills) {
-        if (preventedBySkills <= 0.0F) return 0;
-        return clampInt((int) Math.floor(preventedBySkills * 2.4F), 1, 90);
     }
 
     public static float applyIncomingReductions(ServerPlayer target, PlayerSkills skills, DamageSource src, float amount) {
@@ -196,54 +158,6 @@ public final class SkillLogic {
 
     private static int clampInt(int v, int min, int max) {
         return Math.max(min, Math.min(max, v));
-    }
-
-    private static boolean shouldAwardLevelUpCombatXp(LivingEntity victim) {
-        Object common = LevelUpConfig.COMMON;
-        try {
-            Method shouldDropLevels = common.getClass().getMethod("shouldDropLevels", LivingEntity.class);
-            Object allowed = shouldDropLevels.invoke(common, victim);
-            if (allowed instanceof Boolean bool && !bool) return false;
-
-            Method getMobLevelDropAmount = common.getClass().getMethod("getMobLevelDropAmount", LivingEntity.class);
-            Object dropAmount = getMobLevelDropAmount.invoke(common, victim);
-            if (dropAmount instanceof Number number) return number.intValue() > 0;
-            return false;
-        } catch (ReflectiveOperationException ignored) {
-            boolean enabled = readBooleanConfig(common, "mobsDropLevels", "enableMobKillXp");
-            int baseValue = readIntConfig(common, "mobLevelDropBaseValue", "mobKillXp");
-            if (!enabled || baseValue <= 0) return false;
-
-            boolean taggedOnly = readBooleanConfig(common, "onlyTaggedMobsDropLevels", "dropLevelsOnlyFromMobsWithTag");
-            if (taggedOnly) {
-                return victim.getType().is(LevelUpTags.DROPS_LEVELS) || victim.getType().is(LevelUpTags.LEGACY_DROP_LEVELS);
-            }
-            return victim instanceof Enemy;
-        }
-    }
-
-    private static boolean readBooleanConfig(Object common, String... fieldNames) {
-        Object value = readConfigValue(common, fieldNames);
-        return value instanceof Boolean bool && bool;
-    }
-
-    private static int readIntConfig(Object common, String... fieldNames) {
-        Object value = readConfigValue(common, fieldNames);
-        return value instanceof Number number ? number.intValue() : 0;
-    }
-
-    private static Object readConfigValue(Object common, String... fieldNames) {
-        for (String fieldName : fieldNames) {
-            try {
-                Field field = common.getClass().getField(fieldName);
-                Object specValue = field.get(common);
-                if (specValue == null) continue;
-                Method getter = specValue.getClass().getMethod("get");
-                return getter.invoke(specValue);
-            } catch (ReflectiveOperationException ignored) {
-            }
-        }
-        return null;
     }
 
     private static final class Streak {
