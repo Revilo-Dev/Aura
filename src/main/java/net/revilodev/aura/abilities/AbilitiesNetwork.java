@@ -69,7 +69,7 @@ public final class AbilitiesNetwork {
 
     private static boolean trySwitchSpecialization(ServerPlayer player, PlayerAbilities abilities, AbilityId target) {
         if (player == null || abilities == null || target == null || !target.isSpecialization()) return false;
-        if (abilities.rank(target.core()) <= 0) return false;
+        if (AbilityLogic.effectiveCoreRank(player, abilities, target) <= 0) return false;
 
         AbilityId current = abilities.selectedSpecialization(target.element());
         if (current == target) return false;

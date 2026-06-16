@@ -127,7 +127,7 @@ public final class PlayerAbilities implements INBTSerializable<CompoundTag> {
     }
 
     public boolean selectSpecialization(AbilityId id) {
-        if (id == null || !id.isSpecialization() || rank(id.core()) <= 0) return false;
+        if (id == null || !id.isSpecialization()) return false;
         selectedSpecializations.put(id.element(), id);
         return true;
     }
@@ -147,7 +147,6 @@ public final class PlayerAbilities implements INBTSerializable<CompoundTag> {
 
     public void markUsed(AbilityId id) {
         if (id == null) return;
-        if (id.isSpecialization() && rank(id.core()) <= 0) return;
         if (id.isCore() && !unlocked(id)) return;
         recent.remove(id);
         recent.add(0, id);
@@ -157,7 +156,7 @@ public final class PlayerAbilities implements INBTSerializable<CompoundTag> {
     }
 
     public void markSpecializationSwitched(AbilityId from, AbilityId to) {
-        if (to == null || !to.isSpecialization() || rank(to.core()) <= 0) return;
+        if (to == null || !to.isSpecialization()) return;
         recent.removeIf(id -> id != null && id.isSpecialization() && id.element() == to.element());
         recent.add(0, to);
         while (recent.size() > RECENT_COUNT) {

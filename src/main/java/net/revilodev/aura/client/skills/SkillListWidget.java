@@ -163,14 +163,18 @@ public final class SkillListWidget extends AbstractWidget {
                                 .append(Component.literal(" "))
                                 .append(Component.translatable("gui.aura.level.short", ps.level(def.id())).withStyle(ChatFormatting.AQUA)),
                         Component.literal(def.description()).withStyle(ChatFormatting.GRAY),
-                        Component.translatable("gui.aura.hint.left_upgrade").withStyle(ChatFormatting.GREEN),
-                        Component.translatable("gui.aura.hint.right_downgrade").withStyle(ChatFormatting.RED)
+                        Component.translatable("gui.aura.hint.left_upgrade_cost", pointText(1)).withStyle(ChatFormatting.GREEN),
+                        Component.translatable("gui.aura.hint.right_downgrade_refund", pointText(1)).withStyle(ChatFormatting.RED)
                 );
                 gg.renderTooltip(mc.font, lines, java.util.Optional.empty(), mouseX, mouseY);
                 gg.enableScissor(getX(), top, getX() + width, getY() + height);
             }
         }
         gg.disableScissor();
+    }
+
+    private static String pointText(int points) {
+        return points + " point" + (points == 1 ? "" : "s");
     }
 
     @Override

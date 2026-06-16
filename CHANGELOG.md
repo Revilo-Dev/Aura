@@ -1,5 +1,25 @@
 # Changelog
 
+## Update 4.1
+
+### Equipment Integration
+- Added Aura attribute support for armor and other equipment-driven loadouts.
+- Added `aura:ability_power` equipment scaling support for ability damage, radius, duration, healing, and mobility.
+- Added additive skill bonus attributes:
+  - `aura:skill_<skill>_bonus`
+  - examples: `aura:skill_agility_bonus`, `aura:skill_strength_bonus`, `aura:skill_power_bonus`
+- Added additive ability bonus attributes:
+  - `aura:ability_<ability>_bonus`
+  - examples: `aura:ability_lightning_bonus`, `aura:ability_force_rampage_bonus`, `aura:ability_magic_bonus`
+- Effective skill and ability values are calculated at runtime from saved progression plus equipment attributes.
+- Saved player skill/ability data and point totals are unchanged.
+
+### Mod Integration Notes
+- Other mods can implement class armor sets by adding normal NeoForge item attribute modifiers for Aura attributes.
+- Use `ADD_VALUE` for loadout rank bonuses such as `+1 lightning`, `+1 rampage`, `+1 power`, or `+2 strength`.
+- Use stable modifier ids per armor item and attribute so bonuses are removed automatically when the armor is unequipped.
+- See the README section `Equipment Bonuses for Skills and Abilities (Aura 4.1+)` for the full attribute list and loadout examples.
+
 ## Update 3
 
 ### Abilities

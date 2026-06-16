@@ -11,6 +11,7 @@ import net.minecraft.world.entity.ai.attributes.AttributeInstance;
 import net.minecraft.world.entity.ai.attributes.AttributeModifier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.revilodev.aura.CodexMod;
+import net.revilodev.aura.attributes.CodexAttributes;
 import net.revilodev.aura.skills.PlayerSkills;
 import net.revilodev.aura.skills.SkillBalance;
 import net.revilodev.aura.skills.SkillId;
@@ -42,6 +43,11 @@ public final class SkillLogic {
         return skills.tryDowngrade(id);
     }
 
+    public static int effectiveLevel(ServerPlayer player, PlayerSkills skills, SkillId id) {
+        if (skills == null || id == null) return 0;
+        return Math.max(0, skills.level(id) + CodexAttributes.skillBonus(player, id));
+    }
+
     public static void clearStreaks(UUID id) {
         if (id != null) COMBAT_STREAK.remove(id);
     }
@@ -60,17 +66,17 @@ public final class SkillLogic {
 
     public static float applyIncomingReductions(ServerPlayer target, PlayerSkills skills, DamageSource src, float amount) {
         float out = amount;
-        int resistance = skills.level(SkillId.RESISTANCE);
+        int resistance = effectiveLevel(target, skills, SkillId.RESISTANCE);
         if (resistance > 0) {
             out *= (float) (1.0D - SkillBalance.resistance(resistance));
         }
 
-        int fire = skills.level(SkillId.FIRE_RESISTANCE);
+        int fire = effectiveLevel(target, skills, SkillId.FIRE_RESISTANCE);
         if (fire > 0 && src.is(DamageTypeTags.IS_FIRE)) {
             out *= (float) (1.0D - SkillBalance.fireResistance(fire));
         }
 
-        int proj = skills.level(SkillId.PROJECTILE_RESISTANCE);
+        int proj = effectiveLevel(target, skills, SkillId.PROJECTILE_RESISTANCE);
         if (proj > 0 && src.is(DamageTypeTags.IS_PROJECTILE)) {
             out *= (float) (1.0D - SkillBalance.projectileResistance(proj));
         }
@@ -78,18 +84,17 @@ public final class SkillLogic {
     }
 
     public static void applyAllEffects(ServerPlayer player, PlayerSkills skills) {
-        if (skills.consumeModifiersDirty()) {
-            applyAttributeModifiers(player, skills);
-        }
+        skills.consumeModifiersDirty();
+        applyAttributeModifiers(player, skills);
         applyTickEffects(player, skills);
     }
 
     private static void applyAttributeModifiers(ServerPlayer player, PlayerSkills skills) {
-        int strength = skills.level(SkillId.STRENGTH);
-        int vitality = skills.level(SkillId.VITALITY);
-        int agility = skills.level(SkillId.AGILITY);
-        int kb = skills.level(SkillId.KNOCKBACK_RESISTANCE);
-        int luck = skills.level(SkillId.LUCK);
+        int strength = effectiveLevel(player, skills, SkillId.STRENGTH);
+        int vitality = effectiveLevel(player, skills, SkillId.VITALITY);
+        int agility = effectiveLevel(player, skills, SkillId.AGILITY);
+        int kb = effectiveLevel(player, skills, SkillId.KNOCKBACK_RESISTANCE);
+        int luck = effectiveLevel(player, skills, SkillId.LUCK);
 
         applyModifier(player, Attributes.ATTACK_DAMAGE, MOD_ATTACK_DAMAGE, SkillBalance.strengthDamage(strength), AttributeModifier.Operation.ADD_VALUE);
         applyModifier(player, Attributes.MAX_HEALTH, MOD_MAX_HEALTH, SkillBalance.vitalityHearts(vitality) * 2.0D, AttributeModifier.Operation.ADD_VALUE);
@@ -100,13 +105,13 @@ public final class SkillLogic {
     }
 
     private static void applyTickEffects(ServerPlayer player, PlayerSkills skills) {
-        int regen = skills.level(SkillId.REGENERATION);
+        int regen = effectiveLevel(player, skills, SkillId.REGENERATION);
         if (regen > 0 && player.getHealth() < player.getMaxHealth()) {
             float heal = SkillBalance.regenHeartsPerSecond(regen);
             if (heal > 0.0F) player.heal(heal);
         }
 
-        int jump = skills.level(SkillId.LEAPING);
+        int jump = effectiveLevel(player, skills, SkillId.LEAPING);
         if (jump > 0) {
             int amp = Math.max(0, Math.min(4, (int) Math.floor(SkillBalance.leapingBonus(jump))));
             addIfStronger(player, new MobEffectInstance(MobEffects.JUMP, 220, amp, true, false, false));

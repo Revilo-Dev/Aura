@@ -39,21 +39,38 @@ public final class AbilityLogic {
     public static boolean tryActivate(ServerPlayer player, AbilityId id) {
         if (player == null || id == null || !id.isSpecialization()) return false;
         PlayerAbilities abilities = player.getData(AbilitiesAttachments.PLAYER_ABILITIES.get());
-        if (!AbilityConfig.enabled(id) || abilities.rank(id.core()) <= 0 || abilities.cooldownTicks(id) > 0) return false;
+        int effectiveRank = effectiveRank(player, abilities, id);
+        int effectiveCoreRank = effectiveCoreRank(player, abilities, id);
+        if (!AbilityConfig.enabled(id) || effectiveCoreRank <= 0 || abilities.cooldownTicks(id) > 0) return false;
 
         PlayerSkills skills = player.getData(SkillsAttachments.PLAYER_SKILLS.get());
         double abilityPower = CodexAttributes.abilityPower(player, id);
-        AbilityUseEvent.Pre preEvent = new AbilityUseEvent.Pre(player, id, abilities.rank(id), skills, abilityPower);
+        AbilityUseEvent.Pre preEvent = new AbilityUseEvent.Pre(player, id, effectiveRank, skills, abilityPower);
         if (NeoForge.EVENT_BUS.post(preEvent).isCanceled()) return false;
 
-        int coreRank = Math.max(1, abilities.rank(id.core()));
+        int coreRank = Math.max(1, effectiveCoreRank);
         if (!execute(player, id, coreRank, preEvent.getAbilityPower())) return false;
         abilities.setCooldown(id, AbilityScaling.cooldownTicks(id, coreRank, skills));
         abilities.markUsed(id);
         player.awardStat(CodexStats.ABILITIES_USED);
         player.awardStat(CodexStats.abilityUse(id));
-        NeoForge.EVENT_BUS.post(new AbilityUseEvent.Post(player, id, abilities.rank(id), skills, preEvent.getAbilityPower()));
+        NeoForge.EVENT_BUS.post(new AbilityUseEvent.Post(player, id, effectiveRank, skills, preEvent.getAbilityPower()));
         return true;
+    }
+
+    public static int effectiveRank(ServerPlayer player, PlayerAbilities abilities, AbilityId id) {
+        if (abilities == null || id == null) return 0;
+        return Math.max(0, abilities.rank(id) + CodexAttributes.abilityBonus(player, id));
+    }
+
+    public static int effectiveCoreRank(ServerPlayer player, PlayerAbilities abilities, AbilityId id) {
+        if (abilities == null || id == null) return 0;
+        AbilityId core = id.core();
+        int coreRank = effectiveRank(player, abilities, core);
+        if (id.isSpecialization() && effectiveRank(player, abilities, id) > 0) {
+            coreRank = Math.max(1, coreRank);
+        }
+        return coreRank;
     }
 
     private static boolean execute(ServerPlayer player, AbilityId id, int coreRank, double abilityPower) {
@@ -356,7 +373,7 @@ public final class AbilityLogic {
 
     private static void tickStorm(ServerPlayer player, AbilityId id, PlayerAbilities abilities, PlayerSkills skills) {
         if (!(player.level() instanceof ServerLevel level)) return;
-        int coreRank = Math.max(1, abilities.rank(id.core()));
+        int coreRank = Math.max(1, effectiveCoreRank(player, abilities, id));
         double abilityPower = CodexAttributes.abilityPower(player, id);
         int active = abilities.activeTicks(id);
         Vec3 center = player.position().add(0.0D, 4.2D, 0.0D);

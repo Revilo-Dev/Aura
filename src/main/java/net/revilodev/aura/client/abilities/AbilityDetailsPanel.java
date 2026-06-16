@@ -181,6 +181,10 @@ public final class AbilityDetailsPanel extends AbstractWidget {
             int cost = abilities.upgradeCost(ability.id());
             int costColor = canUp ? 0xF0D15C : 0xA0A0A0;
             drawSmallWrapped(gg, "upgrade cost: " + cost + " point" + (cost == 1 ? "" : "s"), x + 4, textY, w - 8, costColor);
+            textY += SMALL_LINE_STEP;
+            int refund = abilities.rank(ability.id());
+            int refundColor = canDown ? 0xF0AAAA : 0xA0A0A0;
+            drawSmallWrapped(gg, "downgrade refund: " + refund + " point" + (refund == 1 ? "" : "s"), x + 4, textY, w - 8, refundColor);
         }
         gg.disableScissor();
 
@@ -230,6 +234,7 @@ public final class AbilityDetailsPanel extends AbstractWidget {
         lines += mc.font.split(Component.literal(abilityStatText(ability.id(), level, skills)), scaledWidth).size();
         if (ability.type() != net.revilodev.aura.abilities.AbilityNodeType.SPECIALIZATION) {
             lines += mc.font.split(Component.literal("upgrade cost: 999 points"), scaledWidth).size();
+            lines += mc.font.split(Component.literal("downgrade refund: 999 points"), scaledWidth).size();
         }
         return lines * SMALL_LINE_STEP;
     }

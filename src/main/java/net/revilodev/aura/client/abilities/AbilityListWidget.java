@@ -262,12 +262,14 @@ public final class AbilityListWidget extends AbstractWidget {
                     int cost = abilities.upgradeCost(def.id());
                     tooltip.add(Component.literal("Upgrade cost: " + cost + " point" + (cost == 1 ? "" : "s")).withStyle(ChatFormatting.YELLOW));
                 }
-                tooltip.add(Component.translatable(def.type() == net.revilodev.aura.abilities.AbilityNodeType.CORE
-                        ? "gui.aura.hint.left_upgrade"
-                        : "gui.aura.hint.click_select").withStyle(ChatFormatting.GREEN));
-                tooltip.add(Component.translatable(def.type() == net.revilodev.aura.abilities.AbilityNodeType.CORE
-                        ? "gui.aura.hint.right_downgrade"
-                        : "gui.aura.empty").withStyle(ChatFormatting.RED));
+                if (def.type() == net.revilodev.aura.abilities.AbilityNodeType.CORE) {
+                    int cost = abilities.upgradeCost(def.id());
+                    int refund = abilities.rank(def.id());
+                    tooltip.add(Component.translatable("gui.aura.hint.left_upgrade_cost", pointText(cost)).withStyle(ChatFormatting.GREEN));
+                    tooltip.add(Component.translatable("gui.aura.hint.right_downgrade_refund", pointText(refund)).withStyle(ChatFormatting.RED));
+                } else {
+                    tooltip.add(Component.translatable("gui.aura.hint.click_select").withStyle(ChatFormatting.GREEN));
+                }
                 gg.disableScissor();
                 gg.renderTooltip(mc.font, tooltip, java.util.Optional.empty(), mouseX, mouseY - 4);
                 gg.enableScissor(viewportX, viewportY, viewportX + viewportW, viewportY + viewportH);
@@ -443,6 +445,10 @@ public final class AbilityListWidget extends AbstractWidget {
         String out = String.format(java.util.Locale.ROOT, "%.2f", value);
         while (out.contains(".") && (out.endsWith("0") || out.endsWith("."))) out = out.substring(0, out.length() - 1);
         return out;
+    }
+
+    private static String pointText(int points) {
+        return points + " point" + (points == 1 ? "" : "s");
     }
 
     private record StatPart(String text, ChatFormatting style) {}

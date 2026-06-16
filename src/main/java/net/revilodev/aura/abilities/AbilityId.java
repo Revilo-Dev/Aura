@@ -72,6 +72,7 @@ public enum AbilityId {
     public AbilityNodeType type() { return type; }
     public AbilityId required() { return required; }
     public SkillId scalingSkill() { return scalingSkill; }
+    public String attributePath() { return name().toLowerCase(java.util.Locale.ROOT); }
     public int defaultMaxRank() { return defaultMaxRank; }
     public int baseCooldownTicks() { return baseCooldownTicks; }
     public boolean isCore() { return type == AbilityNodeType.CORE; }

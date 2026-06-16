@@ -63,7 +63,7 @@ public final class SkillEvents {
     private static void onLivingDrops(LivingDropsEvent event) {
         if (!(event.getSource().getEntity() instanceof ServerPlayer sp)) return;
         PlayerSkills skills = sp.getData(SkillsAttachments.PLAYER_SKILLS.get());
-        int looting = skills.level(SkillId.LOOTING);
+        int looting = SkillLogic.effectiveLevel(sp, skills, SkillId.LOOTING);
         if (looting <= 0) return;
         double chance = SkillBalance.lootingChance(looting);
         for (ItemEntity drop : event.getDrops()) {
@@ -79,7 +79,7 @@ public final class SkillEvents {
                 .orElse("");
         if (!blockPath.contains("ore")) return;
         PlayerSkills skills = sp.getData(SkillsAttachments.PLAYER_SKILLS.get());
-        int fortune = skills.level(SkillId.FORTUNE);
+        int fortune = SkillLogic.effectiveLevel(sp, skills, SkillId.FORTUNE);
         if (fortune <= 0) return;
         int bonus = SkillBalance.fortuneBonus(fortune);
         if (bonus <= 0) return;
@@ -97,12 +97,12 @@ public final class SkillEvents {
             PlayerSkills data = attacker.getData(SkillsAttachments.PLAYER_SKILLS.get());
             boolean projectile = event.getSource().getDirectEntity() instanceof AbstractArrow;
             if (projectile) {
-                int power = data.level(SkillId.POWER);
+                int power = SkillLogic.effectiveLevel(attacker, data, SkillId.POWER);
                 if (power > 0) amt += (float) SkillBalance.powerDamage(power);
             }
-            int lifeLeach = data.level(SkillId.HEALTH_BOOST);
+            int lifeLeach = SkillLogic.effectiveLevel(attacker, data, SkillId.HEALTH_BOOST);
             if (lifeLeach > 0 && amt > 0.0F) {
-                int luckLevel = data.level(SkillId.LUCK);
+                int luckLevel = SkillLogic.effectiveLevel(attacker, data, SkillId.LUCK);
                 double leachChance = SkillBalance.lifeLeach(luckLevel);
                 double leachAmount = SkillBalance.lifeLeachAmount();
                 if (attacker.getRandom().nextDouble() < leachChance) {
@@ -117,7 +117,7 @@ public final class SkillEvents {
                     }
                 }
             }
-            int crit = data.level(SkillId.CRIT_POWER);
+            int crit = SkillLogic.effectiveLevel(attacker, data, SkillId.CRIT_POWER);
             if (crit > 0 && isCritical(attacker)) {
                 amt *= (float) (1.0D + SkillBalance.critPowerDamage(crit));
             }
@@ -153,7 +153,7 @@ public final class SkillEvents {
         if (!(event.getEntity() instanceof ServerPlayer sp)) return;
         if (sp.isSpectator()) return;
         PlayerSkills data = sp.getData(SkillsAttachments.PLAYER_SKILLS.get());
-        int lvl = data.level(SkillId.KNOCKBACK_RESISTANCE);
+        int lvl = SkillLogic.effectiveLevel(sp, data, SkillId.KNOCKBACK_RESISTANCE);
         if (lvl <= 0) return;
         float scale = (float) Math.max(0.0D, 1.0D - SkillBalance.knockbackResistance(lvl));
         event.setStrength(event.getStrength() * scale);
@@ -162,7 +162,7 @@ public final class SkillEvents {
     private static void onBreakSpeed(BreakSpeed event) {
         if (!(event.getEntity() instanceof ServerPlayer sp)) return;
         PlayerSkills data = sp.getData(SkillsAttachments.PLAYER_SKILLS.get());
-        int haste = data.level(SkillId.HASTE);
+        int haste = SkillLogic.effectiveLevel(sp, data, SkillId.HASTE);
         if (haste <= 0) return;
         event.setNewSpeed((float) (event.getNewSpeed() + SkillBalance.hasteBreakSpeed(haste)));
     }
@@ -183,7 +183,7 @@ public final class SkillEvents {
         if (effect == null || effect.getEffect().value().isBeneficial()) return;
 
         PlayerSkills skills = sp.getData(SkillsAttachments.PLAYER_SKILLS.get());
-        int cleanse = skills.level(SkillId.CLEANSE);
+        int cleanse = SkillLogic.effectiveLevel(sp, skills, SkillId.CLEANSE);
         if (cleanse <= 0) return;
 
         double reduction = SkillBalance.cleanseImmunities(cleanse);

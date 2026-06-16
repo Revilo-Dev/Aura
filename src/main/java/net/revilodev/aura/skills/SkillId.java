@@ -48,6 +48,7 @@ public enum SkillId {
     public boolean secondary() { return !primary; }
     public SkillId parent() { return parent; }
     public String title() { return Component.translatable("skill.aura." + translationPath + ".name").getString(); }
+    public String attributePath() { return name().toLowerCase(java.util.Locale.ROOT); }
     public ResourceLocation icon() { return icon; }
     public String description() { return Component.translatable("skill.aura." + translationPath + ".description").getString(); }
     public int maxLevel() { return SkillConfig.maxLevel(this); }
