@@ -13,6 +13,7 @@ import net.neoforged.api.distmarker.Dist;
 import net.neoforged.api.distmarker.OnlyIn;
 import net.revilodev.aura.CodexMod;
 import net.revilodev.aura.attributes.CodexAttributes;
+import net.revilodev.aura.client.AuraClientConfig;
 import net.revilodev.aura.skills.PlayerSkills;
 import net.revilodev.aura.skills.SkillDefinition;
 import net.revilodev.aura.skills.SkillId;
@@ -44,6 +45,8 @@ public final class SkillListWidget extends AbstractWidget {
             ResourceLocation.fromNamespaceAndPath(CodexMod.MOD_ID, "textures/gui/sprites/link.png");
     private static final ResourceLocation LINK_DISABLED_TEX =
             ResourceLocation.fromNamespaceAndPath(CodexMod.MOD_ID, "textures/gui/sprites/link-disabled.png");
+    private static final ResourceLocation SKILL_ORB_TEX =
+            ResourceLocation.fromNamespaceAndPath(CodexMod.MOD_ID, "textures/gui/icon/skill_orb.png");
 
     public static final int HEADER_HEIGHT = 11;
     public static final int CELL_SIZE = 23;
@@ -67,13 +70,22 @@ public final class SkillListWidget extends AbstractWidget {
     public void reloadSkills() {
         nodes.clear();
         List<SkillDefinition> primaries = SkillRegistry.primarySkills();
-        for (int col = 0; col < primaries.size(); col++) {
-            SkillDefinition primary = primaries.get(col);
+        int col = 0;
+        for (SkillDefinition primary : primaries) {
+            if (!AuraClientConfig.skillEnabled(primary.id())) continue;
             nodes.add(new Node(primary, col, 0));
             List<SkillDefinition> children = SkillRegistry.secondarySkillsFor(primary.id());
             for (int row = 0; row < children.size(); row++) {
-                nodes.add(new Node(children.get(row), col, row + 1));
+                SkillDefinition child = children.get(row);
+                if (AuraClientConfig.skillEnabled(child.id())) {
+                    nodes.add(new Node(child, col, row + 1));
+                }
             }
+            col++;
+        }
+        if (selected != null && nodes.stream().noneMatch(n -> n.def.id() == selected)) {
+            selected = null;
+            if (onClick != null) onClick.accept(null);
         }
     }
 
@@ -111,10 +123,14 @@ public final class SkillListWidget extends AbstractWidget {
     @Override
     protected void renderWidget(GuiGraphics gg, int mouseX, int mouseY, float pt) {
         if (!visible || mc.player == null) return;
+        reloadSkills();
         PlayerSkills ps = mc.player.getData(SkillsAttachments.PLAYER_SKILLS.get());
         boolean editLocked = CodexAttributes.isAbilitySkillEditLocked(mc.player);
         if (headerVisible) {
-            drawScaledText(gg, Component.translatable("gui.aura.points.skill_short", ps.points()).getString(), getX() + 1, getY() + 4, 0x6AB2FF, POINTS_TEXT_SCALE);
+            int textX = getX() + 1;
+            int textY = getY() + 4;
+            drawScaledIcon(gg, SKILL_ORB_TEX, textX - 10, textY - 1, 8);
+            drawScaledText(gg, Component.translatable("gui.aura.points.skill_short", ps.points()).getString(), textX, textY, 0x6AB2FF, POINTS_TEXT_SCALE);
         }
 
         int top = getY() + HEADER_HEIGHT;
@@ -140,8 +156,11 @@ public final class SkillListWidget extends AbstractWidget {
             boolean learned = ps.level(def.id()) > 0;
 
             boolean unlocked = def.primary() || ps.canUnlock(def.id());
+            boolean configEnabled = AuraClientConfig.skillEnabled(def.id());
             ResourceLocation tex;
-            if (def.primary() && !learned) {
+            if (!configEnabled) {
+                tex = hovered ? WIDGET_DISABLED_HOVER_TEX : WIDGET_DISABLED_TEX;
+            } else if (def.primary() && !learned) {
                 tex = WIDGET_PRIMARY_DISABLED_TEX;
             } else if (editLocked || !unlocked) {
                 tex = hovered ? WIDGET_DISABLED_HOVER_TEX : WIDGET_DISABLED_TEX;
@@ -163,8 +182,7 @@ public final class SkillListWidget extends AbstractWidget {
                                 .append(Component.literal(" "))
                                 .append(Component.translatable("gui.aura.level.short", ps.level(def.id())).withStyle(ChatFormatting.AQUA)),
                         Component.literal(def.description()).withStyle(ChatFormatting.GRAY),
-                        Component.translatable("gui.aura.hint.left_upgrade_cost", pointText(1)).withStyle(ChatFormatting.GREEN),
-                        Component.translatable("gui.aura.hint.right_downgrade_refund", pointText(1)).withStyle(ChatFormatting.RED)
+                        Component.literal("| " + pointText(1)).withStyle(ChatFormatting.GREEN)
                 );
                 gg.renderTooltip(mc.font, lines, java.util.Optional.empty(), mouseX, mouseY);
                 gg.enableScissor(getX(), top, getX() + width, getY() + height);
@@ -174,7 +192,7 @@ public final class SkillListWidget extends AbstractWidget {
     }
 
     private static String pointText(int points) {
-        return points + " point" + (points == 1 ? "" : "s");
+        return points + " Point" + (points == 1 ? "" : "s");
     }
 
     @Override
@@ -188,6 +206,7 @@ public final class SkillListWidget extends AbstractWidget {
         }
         selected = node.def.id();
         if (onClick != null) onClick.accept(node.def);
+        if (!AuraClientConfig.skillEnabled(node.def.id())) return true;
         if (CodexAttributes.isAbilitySkillEditLocked(mc.player)) return true;
         if (button == 0) {
             PacketDistributor.sendToServer(new SkillsNetwork.SkillActionPayload(node.def.id().ordinal(), true));
@@ -238,6 +257,14 @@ public final class SkillListWidget extends AbstractWidget {
         gg.pose().translate(x, y, 0.0F);
         gg.pose().scale(w / 26.0F, h / 26.0F, 1.0F);
         gg.blit(tex, 0, 0, 0, 0, 26, 26, 26, 26);
+        gg.pose().popPose();
+    }
+
+    private void drawScaledIcon(GuiGraphics gg, ResourceLocation tex, int x, int y, int size) {
+        gg.pose().pushPose();
+        gg.pose().translate(x, y, 0.0F);
+        gg.pose().scale(size / 16.0F, size / 16.0F, 1.0F);
+        gg.blit(tex, 0, 0, 0, 0, 16, 16, 16, 16);
         gg.pose().popPose();
     }
 

@@ -140,8 +140,6 @@ public final class SkillDetailsPanel extends AbstractWidget {
         int textY = viewportTop - Mth.floor(scrollY);
         textY = drawSmallWrapped(gg, skill.description(), x + 4, textY, w - 8, 0xE2E2E2) + 4;
         textY = drawSmallWrapped(gg, "effect: " + effectText(skill, level), x + 4, textY, w - 8, 0xA6D9FF) + 4;
-        textY = drawSmallWrapped(gg, "upgrade cost: 1 point", x + 4, textY, w - 8, canUp ? 0xF0D15C : 0xA0A0A0) + 2;
-        textY = drawSmallWrapped(gg, "downgrade refund: 1 point", x + 4, textY, w - 8, canDown ? 0xF0AAAA : 0xA0A0A0) + 4;
         if (!unlocked) {
             drawSmallWrapped(gg, "requires: " + skill.parent().title() + " level 1", x + 4, textY, w - 8, 0xF0AAAA);
         }
@@ -199,8 +197,6 @@ public final class SkillDetailsPanel extends AbstractWidget {
         int scaledWidth = Math.max(1, Mth.floor((width - 8) / SMALL_TEXT_SCALE));
         int lines = mc.font.split(Component.literal(def.description()), scaledWidth).size();
         lines += mc.font.split(Component.literal("effect: " + effectText(def, Math.max(1, level))), scaledWidth).size();
-        lines += mc.font.split(Component.literal("upgrade cost: 1 point"), scaledWidth).size();
-        lines += mc.font.split(Component.literal("downgrade refund: 1 point"), scaledWidth).size();
         if (!unlocked) lines += mc.font.split(Component.literal("requires: " + def.parent().title() + " level 1"), scaledWidth).size();
         return lines * Math.max(1, Mth.ceil(mc.font.lineHeight * SMALL_TEXT_SCALE));
     }

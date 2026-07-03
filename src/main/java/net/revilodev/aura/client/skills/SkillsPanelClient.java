@@ -24,6 +24,7 @@ import net.revilodev.aura.abilities.AbilityId;
 import net.revilodev.aura.abilities.AbilityRegistry;
 import net.revilodev.aura.abilities.PlayerAbilities;
 import net.revilodev.aura.attributes.CodexAttributes;
+import net.revilodev.aura.client.AuraBookSettingsModel;
 import net.revilodev.aura.client.AuraClientConfig;
 import net.revilodev.aura.client.BottomPullTabButton;
 import net.revilodev.aura.client.PanelTab;
@@ -32,7 +33,6 @@ import net.revilodev.aura.client.SkillsToggleButton;
 import net.revilodev.aura.client.abilities.AbilityKeybinds;
 import net.revilodev.aura.client.abilities.AbilityDetailsPanel;
 import net.revilodev.aura.client.abilities.AbilityListWidget;
-import net.revilodev.aura.client.screen.LevelUpConfigScreen;
 import net.revilodev.aura.skills.SkillBalance;
 import net.revilodev.aura.skills.SkillDefinition;
 import net.revilodev.aura.skills.SkillId;
@@ -67,6 +67,10 @@ public final class SkillsPanelClient {
             ResourceLocation.fromNamespaceAndPath(CodexMod.MOD_ID, "textures/gui/sprites/pull-tab-settings-pulled.png");
     private static final ResourceLocation SETTINGS_TAB_TEX_PULLED_ALT =
             ResourceLocation.fromNamespaceAndPath(CodexMod.MOD_ID, "textures/gui/sprites/pull-tab-settings-selected.png");
+    private static final ResourceLocation SKILL_ORB_TEX =
+            ResourceLocation.fromNamespaceAndPath(CodexMod.MOD_ID, "textures/gui/icon/skill_orb.png");
+    private static final ResourceLocation ABILITY_ORB_TEX =
+            ResourceLocation.fromNamespaceAndPath(CodexMod.MOD_ID, "textures/gui/icon/ability_orb.png");
 
     private static final int PANEL_W = 147;
     private static final int PANEL_H = 166;
@@ -96,6 +100,8 @@ public final class SkillsPanelClient {
         NeoForge.EVENT_BUS.addListener(ScreenEvent.MouseButtonPressed.Pre.class, SkillsPanelClient::onMousePressed);
         NeoForge.EVENT_BUS.addListener(ScreenEvent.MouseDragged.Pre.class, SkillsPanelClient::onMouseDragged);
         NeoForge.EVENT_BUS.addListener(ScreenEvent.MouseButtonReleased.Pre.class, SkillsPanelClient::onMouseReleased);
+        NeoForge.EVENT_BUS.addListener(ScreenEvent.KeyPressed.Pre.class, SkillsPanelClient::onKeyPressed);
+        NeoForge.EVENT_BUS.addListener(ScreenEvent.CharacterTyped.Pre.class, SkillsPanelClient::onCharTyped);
     }
 
     public static void onScreenInit(ScreenEvent.Init.Post event) {
@@ -273,10 +279,10 @@ public final class SkillsPanelClient {
             return;
         }
         if (st.viewMode == ViewMode.SETTINGS) {
-            if (event.getButton() == 0 && isInSettingsView(st, mouseX, mouseY)) {
+            if ((event.getButton() == 0 || event.getButton() == 1) && isInSettingsView(st, mouseX, mouseY)) {
                 int index = (int) ((mouseY - settingsViewY(st) + st.settingsScroll) / SETTINGS_ROW_H);
                 if (index >= 0 && index < st.settingsRows.size()) {
-                    st.settingsRows.get(index).onClick().run();
+                    st.settingsModel.clickRow(index, event.getButton());
                 }
             }
             if (isInsideOverlay(st, mouseX, mouseY)) event.setCanceled(true);
@@ -297,6 +303,24 @@ public final class SkillsPanelClient {
         }
 
         if (used || isInsideOverlay(st, mouseX, mouseY)) {
+            event.setCanceled(true);
+        }
+    }
+
+    public static void onKeyPressed(ScreenEvent.KeyPressed.Pre event) {
+        if (AuraClientConfig.disableInventoryCodexBook() || AuraClientConfig.blockOpenSkillsAbilitiesPanel()) return;
+        State st = STATES.get(event.getScreen());
+        if (st == null || !st.open || st.viewMode != ViewMode.SETTINGS) return;
+        if (st.settingsModel.keyPressed(event.getKeyCode())) {
+            event.setCanceled(true);
+        }
+    }
+
+    public static void onCharTyped(ScreenEvent.CharacterTyped.Pre event) {
+        if (AuraClientConfig.disableInventoryCodexBook() || AuraClientConfig.blockOpenSkillsAbilitiesPanel()) return;
+        State st = STATES.get(event.getScreen());
+        if (st == null || !st.open || st.viewMode != ViewMode.SETTINGS) return;
+        if (st.settingsModel.charTyped(event.getCodePoint())) {
             event.setCanceled(true);
         }
     }
@@ -494,13 +518,24 @@ public final class SkillsPanelClient {
 
         String label = Component.translatable(abilitiesTab ? "gui.aura.points.ability" : "gui.aura.points.skill", points).getString();
         float scale = 0.85F;
-        int x = (abilitiesTab ? st.abilityList.getX() + 15 : st.skillsList.getX()) + 13;
+        int x = st.skillsList.getX() + 13;
         int y = (abilitiesTab ? st.abilityList.getY() : st.skillsList.getY()) + 4;
         int color = abilitiesTab ? 0xC78CFF : 0x6AB2FF;
+        ResourceLocation icon = abilitiesTab ? ABILITY_ORB_TEX : SKILL_ORB_TEX;
+        int iconSize = 8;
+        drawScaledIcon(gg, icon, x - iconSize - 2, y - 1, iconSize);
         gg.pose().pushPose();
         gg.pose().translate(x, y, 0.0F);
         gg.pose().scale(scale, scale, 1.0F);
         gg.drawString(mc.font, label, 0, 0, color, false);
+        gg.pose().popPose();
+    }
+
+    private static void drawScaledIcon(GuiGraphics gg, ResourceLocation icon, int x, int y, int size) {
+        gg.pose().pushPose();
+        gg.pose().translate(x, y, 0.0F);
+        gg.pose().scale(size / 16.0F, size / 16.0F, 1.0F);
+        gg.blit(icon, 0, 0, 0, 0, 16, 16, 16, 16);
         gg.pose().popPose();
     }
 
@@ -514,15 +549,8 @@ public final class SkillsPanelClient {
     }
 
     private static void initSettingsRows(State st) {
-        st.settingsRows.clear();
-        st.settingsRows.add(new SettingRow(Component.translatable("gui.aura.settings.hud_display").getString(), () -> boolState(AuraClientConfig.hudDisplayEnabled()), AuraClientConfig::toggleHudDisplayEnabled));
-        st.settingsRows.add(new SettingRow(Component.translatable("gui.aura.settings.disable_inventory_book").getString(), () -> boolState(AuraClientConfig.disableInventoryCodexBook()), AuraClientConfig::toggleDisableInventoryCodexBook));
-        st.settingsRows.add(new SettingRow(Component.translatable("gui.aura.settings.reposition_hud").getString(), () -> Component.translatable("gui.aura.hud_position." + AuraClientConfig.hudPosition().name().toLowerCase(java.util.Locale.ROOT)).getString(), AuraClientConfig::cycleHudPosition));
-        st.settingsRows.add(new SettingRow(Component.translatable("gui.aura.settings.disable_skills_abilities").getString(), () -> boolState(AuraClientConfig.disableSkillsAndAbilities()), AuraClientConfig::toggleDisableSkillsAndAbilities));
-        st.settingsRows.add(new SettingRow(Component.translatable("gui.aura.settings.block_ability_switching").getString(), () -> boolState(AuraClientConfig.blockAbilitySwitching()), AuraClientConfig::toggleBlockAbilitySwitching));
-        st.settingsRows.add(new SettingRow(Component.translatable("gui.aura.settings.block_upgrade_downgrade").getString(), () -> boolState(AuraClientConfig.blockUpgradeDowngrade()), AuraClientConfig::toggleBlockUpgradeDowngrade));
-        st.settingsRows.add(new SettingRow(Component.translatable("gui.aura.settings.block_open_panel").getString(), () -> boolState(AuraClientConfig.blockOpenSkillsAbilitiesPanel()), AuraClientConfig::toggleBlockOpenSkillsAbilitiesPanel));
-        st.settingsRows.add(new SettingRow(Component.translatable("gui.aura.settings.levelup_values").getString(), () -> Component.translatable("gui.aura.open").getString(), () -> net.minecraft.client.Minecraft.getInstance().setScreen(new LevelUpConfigScreen(net.minecraft.client.Minecraft.getInstance().screen))));
+        st.settingsModel.rebuild();
+        st.settingsRows = st.settingsModel.rows();
     }
 
     private static int settingsViewY(State st) {
@@ -554,23 +582,42 @@ public final class SkillsPanelClient {
             int y = y0 + i * SETTINGS_ROW_H - st.settingsScroll;
             if (y + SETTINGS_ROW_H < y0 || y > y1) continue;
             boolean hovered = mouseX >= st.bg.getX() + SETTINGS_VIEW_PAD_X && mouseX <= st.bg.getX() + PANEL_W - SETTINGS_VIEW_PAD_X && mouseY >= y && mouseY <= y + SETTINGS_ROW_H;
-            int labelColor = hovered ? 0xFFFF55 : 0xFFFFFF;
-            int stateColor = 0x6AB2FF;
-            String label = st.settingsRows.get(i).label();
-            String state = st.settingsRows.get(i).state().get();
+            AuraBookSettingsModel.Row row = st.settingsRows.get(i);
+            int labelColor = row.style() == AuraBookSettingsModel.RowStyle.SECTION
+                    ? 0xFFE08A
+                    : (row.style() == AuraBookSettingsModel.RowStyle.MASTERY ? 0xFFD66B : (hovered ? 0xFFFF55 : 0xFFFFFF));
+            int stateColor = row.style() == AuraBookSettingsModel.RowStyle.INPUT ? 0xD8F0FF : 0x6AB2FF;
+            boolean bold = row.style() == AuraBookSettingsModel.RowStyle.SECTION || row.style() == AuraBookSettingsModel.RowStyle.MASTERY;
+            String label = row.style() == AuraBookSettingsModel.RowStyle.SECTION ? sectionLabel(mc, row.label(), xRight - xLeft, scale) : row.label();
+            String state = st.settingsModel.stateText(row);
             int labelY = y + 1;
-            drawScaledText(gg, mc, label, xLeft, labelY, labelColor, scale);
-            int stateW = (int) (mc.font.width(state) * scale);
-            drawScaledText(gg, mc, state, xRight - stateW, labelY, stateColor, scale);
+            drawScaledText(gg, mc, label, xLeft, labelY, labelColor, scale, bold);
+            if (!state.isEmpty()) {
+                int stateW = (int) (mc.font.width(state) * scale);
+                drawScaledText(gg, mc, state, xRight - stateW, labelY, stateColor, scale);
+            }
         }
         gg.disableScissor();
     }
 
+    private static String sectionLabel(net.minecraft.client.Minecraft mc, String label, int width, float scale) {
+        String out = label + " ";
+        while ((int) (mc.font.width(out + "-") * scale) < width) {
+            out += "-";
+        }
+        return out;
+    }
+
     private static void drawScaledText(GuiGraphics gg, net.minecraft.client.Minecraft mc, String text, int x, int y, int color, float scale) {
+        drawScaledText(gg, mc, text, x, y, color, scale, false);
+    }
+
+    private static void drawScaledText(GuiGraphics gg, net.minecraft.client.Minecraft mc, String text, int x, int y, int color, float scale, boolean bold) {
         gg.pose().pushPose();
         gg.pose().translate(x, y, 0.0F);
         gg.pose().scale(scale, scale, 1.0F);
         gg.drawString(mc.font, text, 0, 0, color, false);
+        if (bold) gg.drawString(mc.font, text, 1, 0, color, false);
         gg.pose().popPose();
     }
 
@@ -754,7 +801,8 @@ public final class SkillsPanelClient {
         BottomPullTabButton playerBottomTab;
         BottomPullTabButton settingsBottomTab;
         ViewMode viewMode = ViewMode.MAIN;
-        final List<SettingRow> settingsRows = new ArrayList<>();
+        final AuraBookSettingsModel settingsModel = new AuraBookSettingsModel();
+        List<AuraBookSettingsModel.Row> settingsRows = new ArrayList<>();
         int settingsScroll = 0;
 
         State(InventoryScreen inv) {
@@ -767,6 +815,4 @@ public final class SkillsPanelClient {
         PLAYER,
         SETTINGS
     }
-
-    private record SettingRow(String label, Supplier<String> state, Runnable onClick) {}
 }

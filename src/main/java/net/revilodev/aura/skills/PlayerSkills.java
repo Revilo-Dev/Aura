@@ -13,6 +13,7 @@ public final class PlayerSkills implements INBTSerializable<CompoundTag> {
     private int points = START_POINTS;
     private final EnumMap<SkillId, Integer> levels = new EnumMap<>(SkillId.class);
     private boolean modifiersDirty = true;
+    private boolean startingBookGiven = false;
 
     public PlayerSkills() {
         initDefaults();
@@ -110,10 +111,19 @@ public final class PlayerSkills implements INBTSerializable<CompoundTag> {
         return dirty;
     }
 
+    public boolean startingBookGiven() {
+        return startingBookGiven;
+    }
+
+    public void markStartingBookGiven() {
+        startingBookGiven = true;
+    }
+
     @Override
     public CompoundTag serializeNBT(HolderLookup.Provider provider) {
         CompoundTag root = new CompoundTag();
         root.putInt("gp", points);
+        root.putBoolean("startingBookGiven", startingBookGiven);
 
         CompoundTag l = new CompoundTag();
         for (SkillId id : SkillId.values()) l.putInt(id.name(), level(id));
@@ -143,6 +153,10 @@ public final class PlayerSkills implements INBTSerializable<CompoundTag> {
             for (SkillId id : SkillId.values()) {
                 if (l.contains(id.name())) levels.put(id, Math.max(0, Math.min(id.maxLevel(), l.getInt(id.name()))));
             }
+        }
+
+        if (nbt.contains("startingBookGiven")) {
+            startingBookGiven = nbt.getBoolean("startingBookGiven");
         }
 
         modifiersDirty = true;

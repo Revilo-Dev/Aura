@@ -185,7 +185,7 @@ public final class AbilityKeybinds {
         List<AbilityId> selected = new ArrayList<>();
         for (AbilityElement element : AbilityElement.values()) {
             AbilityId id = data.selectedSpecialization(element);
-            if (id != null && id.isSpecialization() && data.rank(id.core()) > 0) {
+            if (id != null && id.isSpecialization() && AuraClientConfig.abilityEnabled(id) && data.rank(id.core()) > 0) {
                 selected.add(id);
             }
         }
@@ -261,6 +261,7 @@ public final class AbilityKeybinds {
     private static void useAbility(AbilityId id) {
         Minecraft mc = Minecraft.getInstance();
         if (mc.player == null || id == null) return;
+        if (!AuraClientConfig.abilityEnabled(id)) return;
         PlayerAbilities data = mc.player.getData(AbilitiesAttachments.PLAYER_ABILITIES.get());
         if (!id.isSpecialization() || data.rank(id.core()) <= 0) return;
         AbilityUseFail fail = localFailure(mc, data, id);

@@ -23,6 +23,7 @@ import net.revilodev.aura.abilities.AbilitySpecialization;
 import net.revilodev.aura.abilities.PlayerAbilities;
 import net.revilodev.aura.attributes.CodexAttributes;
 import net.revilodev.aura.abilities.logic.AbilityScaling;
+import net.revilodev.aura.client.AuraClientConfig;
 import net.revilodev.aura.skills.PlayerSkills;
 import net.revilodev.aura.skills.SkillsAttachments;
 
@@ -50,6 +51,8 @@ public final class AbilityListWidget extends AbstractWidget {
             ResourceLocation.fromNamespaceAndPath(CodexMod.MOD_ID, "textures/gui/sprites/link.png");
     private static final ResourceLocation LINK_DISABLED_TEX =
             ResourceLocation.fromNamespaceAndPath(CodexMod.MOD_ID, "textures/gui/sprites/link-disabled.png");
+    private static final ResourceLocation ABILITY_ORB_TEX =
+            ResourceLocation.fromNamespaceAndPath(CodexMod.MOD_ID, "textures/gui/icon/ability_orb.png");
 
     private static final int HEADER_HEIGHT = 11;
     private static final int CELL_SIZE = 23;
@@ -95,12 +98,13 @@ public final class AbilityListWidget extends AbstractWidget {
         List<AbilityDefinition> all = AbilityRegistry.all();
         PlayerAbilities abilities = mc.player == null ? null : mc.player.getData(AbilitiesAttachments.PLAYER_ABILITIES.get());
 
-        for (int col = 0; col < COLUMN_ORDER.size(); col++) {
-            AbilityElement element = COLUMN_ORDER.get(col);
+        int visibleCol = 0;
+        for (AbilityElement element : COLUMN_ORDER) {
             AbilityDefinition core = all.stream().filter(def -> def.element() == element && def.type() == net.revilodev.aura.abilities.AbilityNodeType.CORE).findFirst().orElse(null);
             if (core == null) continue;
+            if (!AuraClientConfig.abilityEnabled(core.id())) continue;
             if (!showLocked && abilities != null && !abilities.unlocked(core.id())) continue;
-            nodes.add(new Node(core, col, 0));
+            nodes.add(new Node(core, visibleCol, 0));
 
             AbilityId cursor = core.id();
             int row = 1;
@@ -113,15 +117,21 @@ public final class AbilityListWidget extends AbstractWidget {
                     }
                 }
                 if (next == null) break;
+                if (!AuraClientConfig.abilityEnabled(next.id())) break;
                 if (showLocked || abilities == null || abilities.unlocked(next.id())) {
-                    nodes.add(new Node(next, col, row));
+                    nodes.add(new Node(next, visibleCol, row));
                 }
                 cursor = next.id();
                 row++;
             }
+            visibleCol++;
         }
 
         if (!showLocked && selected != null && nodes.stream().noneMatch(n -> n.def.id() == selected)) {
+            selected = null;
+            if (onClick != null) onClick.accept(null);
+        }
+        if (showLocked && selected != null && nodes.stream().noneMatch(n -> n.def.id() == selected)) {
             selected = null;
             if (onClick != null) onClick.accept(null);
         }
@@ -184,14 +194,15 @@ public final class AbilityListWidget extends AbstractWidget {
     @Override
     protected void renderWidget(GuiGraphics gg, int mouseX, int mouseY, float partialTick) {
         if (!visible || mc.player == null) return;
+        reloadAbilities();
         PlayerAbilities abilities = mc.player.getData(AbilitiesAttachments.PLAYER_ABILITIES.get());
         PlayerSkills skills = mc.player.getData(SkillsAttachments.PLAYER_SKILLS.get());
         boolean editLocked = CodexAttributes.isAbilitySkillEditLocked(mc.player);
-        if (!showLocked) {
-            reloadAbilities();
-        }
         if (headerVisible) {
-            drawScaledText(gg, Component.translatable("gui.aura.points.ability", abilities.points()).getString(), getX() + 1 + headerTextOffsetX, getY() + 4, 0xC78CFF, 0.85F);
+            int textX = getX() + 1 + headerTextOffsetX;
+            int textY = getY() + 4;
+            drawScaledIcon(gg, ABILITY_ORB_TEX, textX - 10, textY - 1, 8);
+            drawScaledText(gg, Component.translatable("gui.aura.points.ability", abilities.points()).getString(), textX, textY, 0xC78CFF, 0.85F);
         }
 
         int viewportX = getX() + VIEWPORT_OFFSET_X + viewportExtraOffsetX;
@@ -229,9 +240,12 @@ public final class AbilityListWidget extends AbstractWidget {
             AbilityId selectedSpec = abilities.selectedSpecialization(def.element());
             boolean specialization = def.type() == net.revilodev.aura.abilities.AbilityNodeType.SPECIALIZATION;
             boolean isSelectedSpecialization = specialization && def.id() == selectedSpec;
+            boolean configEnabled = AuraClientConfig.abilityEnabled(def.id());
 
             ResourceLocation tex;
-            if (primary && !unlocked) {
+            if (!configEnabled) {
+                tex = hovered ? WIDGET_DISABLED_HOVER_TEX : WIDGET_DISABLED_TEX;
+            } else if (primary && !unlocked) {
                 tex = WIDGET_PRIMARY_DISABLED_TEX;
             } else if (specialization && selectedSpec != null && !isSelectedSpecialization) {
                 tex = hovered ? WIDGET_DISABLED_HOVER_TEX : WIDGET_DISABLED_TEX;
@@ -250,24 +264,19 @@ public final class AbilityListWidget extends AbstractWidget {
             if (hovered) {
                 int lvl = abilities.rank(def.id().core());
                 Component name = Component.literal(def.title()).withStyle(def.type() == net.revilodev.aura.abilities.AbilityNodeType.CORE ? ChatFormatting.GOLD : ChatFormatting.WHITE);
-                List<StatPart> stats = statParts(def.id(), Math.max(1, lvl), skills);
                 List<Component> tooltip = new ArrayList<>();
                 tooltip.add(Component.empty()
                         .append(name)
                         .append(Component.literal(" "))
                         .append(Component.translatable("gui.aura.level.short", lvl).withStyle(ChatFormatting.LIGHT_PURPLE)));
                 tooltip.add(Component.literal(def.description()).withStyle(ChatFormatting.GRAY));
-                tooltip.add(styledStatLine(stats));
-                if (def.type() == net.revilodev.aura.abilities.AbilityNodeType.CORE) {
-                    int cost = abilities.upgradeCost(def.id());
-                    tooltip.add(Component.literal("Upgrade cost: " + cost + " point" + (cost == 1 ? "" : "s")).withStyle(ChatFormatting.YELLOW));
-                }
                 if (def.type() == net.revilodev.aura.abilities.AbilityNodeType.CORE) {
                     int cost = abilities.upgradeCost(def.id());
                     int refund = abilities.rank(def.id());
-                    tooltip.add(Component.translatable("gui.aura.hint.left_upgrade_cost", pointText(cost)).withStyle(ChatFormatting.GREEN));
-                    tooltip.add(Component.translatable("gui.aura.hint.right_downgrade_refund", pointText(refund)).withStyle(ChatFormatting.RED));
+                    tooltip.add(Component.literal("| " + pointText(cost)).withStyle(ChatFormatting.GREEN));
+                    if (refund > 0) tooltip.add(Component.literal("| " + pointText(refund)).withStyle(ChatFormatting.RED));
                 } else {
+                    tooltip.add(styledStatLine(statParts(def.id(), Math.max(1, lvl), skills)));
                     tooltip.add(Component.translatable("gui.aura.hint.click_select").withStyle(ChatFormatting.GREEN));
                 }
                 gg.disableScissor();
@@ -291,6 +300,7 @@ public final class AbilityListWidget extends AbstractWidget {
         boolean editLocked = CodexAttributes.isAbilitySkillEditLocked(mc.player);
         selected = node.def.id();
         if (onClick != null) onClick.accept(node.def);
+        if (!AuraClientConfig.abilityEnabled(node.def.id())) return true;
         boolean isCore = node.def.type() == net.revilodev.aura.abilities.AbilityNodeType.CORE;
         boolean isSpecialization = node.def.type() == net.revilodev.aura.abilities.AbilityNodeType.SPECIALIZATION;
         if (editLocked) return true;
@@ -357,6 +367,14 @@ public final class AbilityListWidget extends AbstractWidget {
         gg.pose().translate(x, y, 0.0F);
         gg.pose().scale(w / 26.0F, h / 26.0F, 1.0F);
         gg.blit(tex, 0, 0, 0, 0, 26, 26, 26, 26);
+        gg.pose().popPose();
+    }
+
+    private void drawScaledIcon(GuiGraphics gg, ResourceLocation tex, int x, int y, int size) {
+        gg.pose().pushPose();
+        gg.pose().translate(x, y, 0.0F);
+        gg.pose().scale(size / 16.0F, size / 16.0F, 1.0F);
+        gg.blit(tex, 0, 0, 0, 0, 16, 16, 16, 16);
         gg.pose().popPose();
     }
 
@@ -448,7 +466,7 @@ public final class AbilityListWidget extends AbstractWidget {
     }
 
     private static String pointText(int points) {
-        return points + " point" + (points == 1 ? "" : "s");
+        return points + " Point" + (points == 1 ? "" : "s");
     }
 
     private record StatPart(String text, ChatFormatting style) {}

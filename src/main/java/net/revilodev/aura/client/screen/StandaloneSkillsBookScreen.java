@@ -10,7 +10,6 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.api.distmarker.OnlyIn;
-import net.neoforged.fml.loading.FMLPaths;
 import net.revilodev.aura.CodexMod;
 import net.revilodev.aura.abilities.AbilitiesAttachments;
 import net.revilodev.aura.attributes.CodexAttributes;
@@ -29,18 +28,14 @@ import net.revilodev.aura.abilities.AbilityDefinition;
 import net.revilodev.aura.abilities.AbilityId;
 import net.revilodev.aura.abilities.AbilityRegistry;
 import net.revilodev.aura.skills.SkillBalance;
+import net.revilodev.aura.client.AuraBookSettingsModel;
 import net.revilodev.aura.skills.SkillDefinition;
 import net.revilodev.aura.skills.SkillId;
 import net.revilodev.aura.skills.SkillRegistry;
 import net.revilodev.aura.skills.SkillsAttachments;
 
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Locale;
-import java.util.function.IntConsumer;
 
 @OnlyIn(Dist.CLIENT)
 public final class StandaloneSkillsBookScreen extends Screen {
@@ -76,10 +71,9 @@ public final class StandaloneSkillsBookScreen extends Screen {
     private BottomPullTabButton settingsBottomTab;
     private ViewMode viewMode = ViewMode.MAIN;
 
-    private final List<SettingRow> settingsRows = new ArrayList<>();
-    private final LevelUpConfigStore levelUpStore = new LevelUpConfigStore();
+    private final AuraBookSettingsModel settingsModel = new AuraBookSettingsModel();
+    private List<AuraBookSettingsModel.Row> settingsRows = new ArrayList<>();
     private int settingsScroll = 0;
-    private boolean levelUpExpanded = false;
     private static final int SETTINGS_ROW_H = 7;
     private static final int SETTINGS_VIEW_PAD_X = 6;
     private static final int SETTINGS_VIEW_TOP = 18;
@@ -95,31 +89,6 @@ public final class StandaloneSkillsBookScreen extends Screen {
         MAIN,
         PLAYER,
         SETTINGS
-    }
-
-    private static final class LevelUpConfigStore {
-        boolean showTopCenterLevelOverlay = true;
-        boolean showTemporaryLevelOverlay = true;
-        boolean showInventoryLevelBar = true;
-        String levelHudPosition = "top";
-        boolean levelHudStayOnScreen = false;
-        int hudColorR = 0x53;
-        int hudColorG = 0xA4;
-        int hudColorB = 0xBC;
-        int hudLevelBarOffsetX = 0;
-        int hudLevelBarOffsetY = 0;
-        int inventoryLevelBarOffsetX = 0;
-        int inventoryLevelBarOffsetY = 0;
-        boolean openHudLevelBarRepositionGui = false;
-        boolean openInventoryLevelBarRepositionGui = false;
-        int baseXpPerLevel = 100;
-        int linearXpPerLevel = 20;
-        double exponent = 1.35D;
-        double levelMultiplier = 0.75D;
-        int maxLevel = 500;
-        boolean enableMobKillXp = true;
-        int mobKillXp = 8;
-        boolean dropLevelsOnlyFromMobsWithTag = false;
     }
 
     public StandaloneSkillsBookScreen() {
@@ -153,7 +122,6 @@ public final class StandaloneSkillsBookScreen extends Screen {
         });
         abilityList.setViewportTweaks(0, 0, 8);
         abilityList.setShowLocked(true);
-        abilityList.setHeaderTextOffsetX(15);
         abilityDetails = new AbilityDetailsPanel(detailsX, detailsY + 3, detailsW, detailsH);
         abilityDetails.setContentTopOffset(3);
 
@@ -182,22 +150,13 @@ public final class StandaloneSkillsBookScreen extends Screen {
         addRenderableWidget(settingsBottomTab);
 
         initSettingsRows();
-        loadLevelUpConfig();
         setViewMode(ViewMode.MAIN);
         setTab(activeTab);
     }
 
     private void initSettingsRows() {
-        settingsRows.clear();
-        settingsRows.add(new SettingRow(Component.translatable("gui.aura.settings.hud_display").getString(), () -> boolState(AuraClientConfig.hudDisplayEnabled()), AuraClientConfig::toggleHudDisplayEnabled));
-        settingsRows.add(new SettingRow(Component.translatable("gui.aura.settings.disable_inventory_book").getString(), () -> boolState(AuraClientConfig.disableInventoryCodexBook()), AuraClientConfig::toggleDisableInventoryCodexBook));
-        settingsRows.add(new SettingRow(Component.translatable("gui.aura.settings.reposition_hud").getString(), () -> Component.translatable("gui.aura.hud_position." + AuraClientConfig.hudPosition().name().toLowerCase(java.util.Locale.ROOT)).getString(), AuraClientConfig::cycleHudPosition));
-        settingsRows.add(new SettingRow(Component.translatable("gui.aura.settings.disable_skills_abilities").getString(), () -> boolState(AuraClientConfig.disableSkillsAndAbilities()), AuraClientConfig::toggleDisableSkillsAndAbilities));
-        settingsRows.add(new SettingRow(Component.translatable("gui.aura.settings.block_ability_switching").getString(), () -> boolState(AuraClientConfig.blockAbilitySwitching()), AuraClientConfig::toggleBlockAbilitySwitching));
-        settingsRows.add(new SettingRow(Component.translatable("gui.aura.settings.block_upgrade_downgrade").getString(), () -> boolState(AuraClientConfig.blockUpgradeDowngrade()), AuraClientConfig::toggleBlockUpgradeDowngrade));
-        settingsRows.add(new SettingRow(Component.translatable("gui.aura.settings.block_open_panel").getString(), () -> boolState(AuraClientConfig.blockOpenSkillsAbilitiesPanel()), AuraClientConfig::toggleBlockOpenSkillsAbilitiesPanel));
-        settingsRows.add(new SettingRow(Component.translatable("gui.aura.settings.levelup_values").getString(), () -> Component.translatable("gui.aura.open").getString(), () -> minecraft.setScreen(new LevelUpConfigScreen(this))));
-        settingsRows.add(new SettingRow(Component.translatable("gui.aura.settings.disabled_skills_abilities").getString(), () -> Component.translatable("gui.aura.open").getString(), () -> minecraft.setScreen(new DisabledSkillsAbilitiesScreen(this))));
+        settingsModel.rebuild();
+        settingsRows = settingsModel.rows();
     }
 
     @Override
@@ -254,7 +213,7 @@ public final class StandaloneSkillsBookScreen extends Screen {
             if (viewMode == ViewMode.SETTINGS && (button == 0 || button == 1) && isInSettingsView(mouseX, mouseY)) {
                 int index = (int) ((mouseY - settingsViewY() + settingsScroll) / SETTINGS_ROW_H);
                 if (index >= 0 && index < settingsRows.size()) {
-                    settingsRows.get(index).onClick.accept(button);
+                    settingsModel.clickRow(index, button);
                     return true;
                 }
             }
@@ -339,6 +298,22 @@ public final class StandaloneSkillsBookScreen extends Screen {
     }
 
     @Override
+    public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
+        if (viewMode == ViewMode.SETTINGS && settingsModel.keyPressed(keyCode)) {
+            return true;
+        }
+        return super.keyPressed(keyCode, scanCode, modifiers);
+    }
+
+    @Override
+    public boolean charTyped(char codePoint, int modifiers) {
+        if (viewMode == ViewMode.SETTINGS && settingsModel.charTyped(codePoint)) {
+            return true;
+        }
+        return super.charTyped(codePoint, modifiers);
+    }
+
+    @Override
     public boolean mouseDragged(double mouseX, double mouseY, int button, double dragX, double dragY) {
         if (viewMode == ViewMode.MAIN && activeTab == PanelTab.ABILITIES && abilityList != null && abilityList.mouseDragged(mouseX, mouseY, button, dragX, dragY)) {
             return true;
@@ -396,17 +371,6 @@ public final class StandaloneSkillsBookScreen extends Screen {
         if (settings) settingsScroll = Math.max(0, settingsScroll);
     }
 
-    private void toggleLevelUpExpanded() {
-        if (!levelUpExpanded) {
-            loadLevelUpConfig();
-        }
-        levelUpExpanded = !levelUpExpanded;
-        int previousScroll = settingsScroll;
-        initSettingsRows();
-        clampSettingsScroll();
-        settingsScroll = Math.min(settingsScroll, previousScroll);
-    }
-
     private boolean isInsidePanelOrTabs(double mouseX, double mouseY) {
         int left = panelX;
         int top = panelY;
@@ -444,24 +408,43 @@ public final class StandaloneSkillsBookScreen extends Screen {
             int y = y0 + i * SETTINGS_ROW_H - settingsScroll;
             if (y + SETTINGS_ROW_H < y0 || y > y1) continue;
             boolean hovered = mouseX >= panelX + SETTINGS_VIEW_PAD_X && mouseX <= panelX + panelWidth - SETTINGS_VIEW_PAD_X && mouseY >= y && mouseY <= y + SETTINGS_ROW_H;
-            int labelColor = hovered ? 0xFFFF55 : 0xFFFFFF;
-            int stateColor = 0x6AB2FF;
+            AuraBookSettingsModel.Row row = settingsRows.get(i);
+            int labelColor = row.style() == AuraBookSettingsModel.RowStyle.SECTION
+                    ? 0xFFE08A
+                    : (row.style() == AuraBookSettingsModel.RowStyle.MASTERY ? 0xFFD66B : (hovered ? 0xFFFF55 : 0xFFFFFF));
+            int stateColor = row.style() == AuraBookSettingsModel.RowStyle.INPUT ? 0xD8F0FF : 0x6AB2FF;
+            boolean bold = row.style() == AuraBookSettingsModel.RowStyle.SECTION || row.style() == AuraBookSettingsModel.RowStyle.MASTERY;
 
-            String label = settingsRows.get(i).label;
-            String state = settingsRows.get(i).state.get();
+            String label = row.style() == AuraBookSettingsModel.RowStyle.SECTION ? sectionLabel(row.label(), xRight - xLeft, scale) : row.label();
+            String state = settingsModel.stateText(row);
             int labelY = y + 1;
-            drawScaledText(gg, label, xLeft, labelY, labelColor, scale);
-            int stateW = (int) (font.width(state) * scale);
-            drawScaledText(gg, state, xRight - stateW, labelY, stateColor, scale);
+            drawScaledText(gg, label, xLeft, labelY, labelColor, scale, bold);
+            if (!state.isEmpty()) {
+                int stateW = (int) (font.width(state) * scale);
+                drawScaledText(gg, state, xRight - stateW, labelY, stateColor, scale);
+            }
         }
         gg.disableScissor();
     }
 
+    private String sectionLabel(String label, int width, float scale) {
+        String out = label + " ";
+        while ((int) (font.width(out + "-") * scale) < width) {
+            out += "-";
+        }
+        return out;
+    }
+
     private void drawScaledText(GuiGraphics gg, String text, int x, int y, int color, float scale) {
+        drawScaledText(gg, text, x, y, color, scale, false);
+    }
+
+    private void drawScaledText(GuiGraphics gg, String text, int x, int y, int color, float scale, boolean bold) {
         gg.pose().pushPose();
         gg.pose().translate(x, y, 0.0F);
         gg.pose().scale(scale, scale, 1.0F);
         gg.drawString(font, text, 0, 0, color, false);
+        if (bold) gg.drawString(font, text, 1, 0, color, false);
         gg.pose().popPose();
     }
 
@@ -600,275 +583,4 @@ public final class StandaloneSkillsBookScreen extends Screen {
         return out;
     }
 
-    private static String boolState(boolean value) {
-        return Component.translatable(value ? "gui.aura.state.enabled" : "gui.aura.state.disabled").getString();
-    }
-
-    private void clampSettingsScroll() {
-        int maxScroll = Math.max(0, settingsRows.size() * SETTINGS_ROW_H - settingsViewHeight());
-        settingsScroll = Math.max(0, Math.min(maxScroll, settingsScroll));
-    }
-
-    private static String hex2(int c) {
-        return String.format(Locale.ROOT, "%02X", c & 0xFF);
-    }
-
-    private static int clampInt(int value, int min, int max) {
-        return Math.max(min, Math.min(max, value));
-    }
-
-    private void openHudReposition() {
-        if (!invokeClientApi("openHudLevelBarRepositionGui")) {
-            levelUpStore.openHudLevelBarRepositionGui = true;
-            saveLevelUpConfig();
-        }
-    }
-
-    private void openInventoryReposition() {
-        if (!invokeClientApi("openInventoryLevelBarRepositionGui")) {
-            levelUpStore.openInventoryLevelBarRepositionGui = true;
-            saveLevelUpConfig();
-        }
-    }
-
-    private boolean invokeClientApi(String method) {
-        try {
-            Class<?> cls = Class.forName("com.revilo.levelup.api.LevelUpClientApi");
-            cls.getMethod(method).invoke(null);
-            return true;
-        } catch (Throwable ignored) {
-            return false;
-        }
-    }
-
-    private Path clientConfigFile() {
-        return FMLPaths.CONFIGDIR.get().resolve("levelup-client.toml");
-    }
-
-    private Path commonConfigFile() {
-        return FMLPaths.CONFIGDIR.get().resolve("levelup-common.toml");
-    }
-
-    private void loadLevelUpConfig() {
-        List<String> client = readLines(clientConfigFile());
-        List<String> common = readLines(commonConfigFile());
-
-        levelUpStore.showTopCenterLevelOverlay = readBool(client, "showTopCenterLevelOverlay", levelUpStore.showTopCenterLevelOverlay);
-        levelUpStore.showTemporaryLevelOverlay = readBool(client, "showTemporaryLevelOverlay", levelUpStore.showTemporaryLevelOverlay);
-        levelUpStore.showInventoryLevelBar = readBool(client, "showInventoryLevelBar", levelUpStore.showInventoryLevelBar);
-        levelUpStore.levelHudPosition = readString(client, "levelHudPosition", levelUpStore.levelHudPosition);
-        levelUpStore.levelHudStayOnScreen = readBool(client, "levelHudStayOnScreen", levelUpStore.levelHudStayOnScreen);
-        String color = readString(client, "levelHudColor", "#53a4bc");
-        if (color.startsWith("#") && color.length() == 7) {
-            levelUpStore.hudColorR = Integer.parseInt(color.substring(1, 3), 16);
-            levelUpStore.hudColorG = Integer.parseInt(color.substring(3, 5), 16);
-            levelUpStore.hudColorB = Integer.parseInt(color.substring(5, 7), 16);
-        }
-        levelUpStore.hudLevelBarOffsetX = readInt(client, "hudLevelBarOffsetX", levelUpStore.hudLevelBarOffsetX);
-        levelUpStore.hudLevelBarOffsetY = readInt(client, "hudLevelBarOffsetY", levelUpStore.hudLevelBarOffsetY);
-        levelUpStore.inventoryLevelBarOffsetX = readInt(client, "inventoryLevelBarOffsetX", levelUpStore.inventoryLevelBarOffsetX);
-        levelUpStore.inventoryLevelBarOffsetY = readInt(client, "inventoryLevelBarOffsetY", levelUpStore.inventoryLevelBarOffsetY);
-        levelUpStore.openHudLevelBarRepositionGui = readBool(client, "openHudLevelBarRepositionGui", false);
-        levelUpStore.openInventoryLevelBarRepositionGui = readBool(client, "openInventoryLevelBarRepositionGui", false);
-
-        levelUpStore.baseXpPerLevel = readInt(common, "baseXpPerLevel", levelUpStore.baseXpPerLevel);
-        levelUpStore.linearXpPerLevel = readInt(common, "linearXpPerLevel", levelUpStore.linearXpPerLevel);
-        levelUpStore.exponent = readDouble(common, "exponent", levelUpStore.exponent);
-        levelUpStore.levelMultiplier = readDouble(common, "levelMultiplier", levelUpStore.levelMultiplier);
-        levelUpStore.maxLevel = readInt(common, "maxLevel", levelUpStore.maxLevel);
-        levelUpStore.enableMobKillXp = readBool(common, "enable_mob_kill_xp", levelUpStore.enableMobKillXp);
-        levelUpStore.mobKillXp = readInt(common, "mobKillXp", levelUpStore.mobKillXp);
-        levelUpStore.dropLevelsOnlyFromMobsWithTag = readBool(common, "drop_levels_only_from_mobs_with_tag", levelUpStore.dropLevelsOnlyFromMobsWithTag);
-    }
-
-    private void saveLevelUpConfig() {
-        String clientOut = """
-                [hud]
-                showTopCenterLevelOverlay=%s
-                showTemporaryLevelOverlay=%s
-                showInventoryLevelBar=%s
-                levelHudPosition="%s"
-                levelHudStayOnScreen=%s
-                levelHudColor="%s"
-                hudLevelBarOffsetX=%d
-                hudLevelBarOffsetY=%d
-                inventoryLevelBarOffsetX=%d
-                inventoryLevelBarOffsetY=%d
-                openHudLevelBarRepositionGui=%s
-                openInventoryLevelBarRepositionGui=%s
-                """.formatted(
-                levelUpStore.showTopCenterLevelOverlay,
-                levelUpStore.showTemporaryLevelOverlay,
-                levelUpStore.showInventoryLevelBar,
-                levelUpStore.levelHudPosition,
-                levelUpStore.levelHudStayOnScreen,
-                "#" + hex2(levelUpStore.hudColorR) + hex2(levelUpStore.hudColorG) + hex2(levelUpStore.hudColorB),
-                levelUpStore.hudLevelBarOffsetX,
-                levelUpStore.hudLevelBarOffsetY,
-                levelUpStore.inventoryLevelBarOffsetX,
-                levelUpStore.inventoryLevelBarOffsetY,
-                levelUpStore.openHudLevelBarRepositionGui,
-                levelUpStore.openInventoryLevelBarRepositionGui
-        );
-        String commonOut = """
-                [progression]
-                baseXpPerLevel=%d
-                linearXpPerLevel=%d
-                exponent=%.2f
-                levelMultiplier=%.2f
-                maxLevel=%d
-
-                [sources]
-                enable_mob_kill_xp=%s
-                mobKillXp=%d
-                drop_levels_only_from_mobs_with_tag=%s
-                """.formatted(
-                levelUpStore.baseXpPerLevel,
-                levelUpStore.linearXpPerLevel,
-                levelUpStore.exponent,
-                levelUpStore.levelMultiplier,
-                levelUpStore.maxLevel,
-                levelUpStore.enableMobKillXp,
-                levelUpStore.mobKillXp,
-                levelUpStore.dropLevelsOnlyFromMobsWithTag
-        );
-        writeFile(clientConfigFile(), clientOut);
-        writeFile(commonConfigFile(), commonOut);
-    }
-
-    private static List<String> readLines(Path path) {
-        try {
-            if (Files.exists(path)) return Files.readAllLines(path);
-        } catch (IOException ignored) {}
-        return List.of();
-    }
-
-    private static void writeFile(Path path, String text) {
-        try {
-            Files.createDirectories(path.getParent());
-            Files.writeString(path, text);
-        } catch (IOException ignored) {}
-    }
-
-    private static String cleanValue(String line) {
-        int eq = line.indexOf('=');
-        if (eq < 0) return "";
-        String value = line.substring(eq + 1).trim();
-        int hash = value.indexOf('#');
-        if (hash >= 0) value = value.substring(0, hash).trim();
-        return value;
-    }
-
-    private static String readString(List<String> lines, String key, String fallback) {
-        for (String line : lines) {
-            String trimmed = line.trim();
-            if (!trimmed.startsWith(key + "=")) continue;
-            String value = cleanValue(trimmed);
-            if (value.startsWith("\"") && value.endsWith("\"") && value.length() >= 2) {
-                value = value.substring(1, value.length() - 1);
-            }
-            return value;
-        }
-        return fallback;
-    }
-
-    private static boolean readBool(List<String> lines, String key, boolean fallback) {
-        String value = readString(lines, key, fallback ? "true" : "false");
-        return "true".equalsIgnoreCase(value);
-    }
-
-    private static int readInt(List<String> lines, String key, int fallback) {
-        try {
-            return Integer.parseInt(readString(lines, key, Integer.toString(fallback)));
-        } catch (Exception ignored) {
-            return fallback;
-        }
-    }
-
-    private static double readDouble(List<String> lines, String key, double fallback) {
-        try {
-            return Double.parseDouble(readString(lines, key, Double.toString(fallback)));
-        } catch (Exception ignored) {
-            return fallback;
-        }
-    }
-
-    private SettingRow levelUpSection(String labelKey) {
-        return new SettingRow("  " + Component.translatable(labelKey).getString(), () -> "", button -> {});
-    }
-
-    private SettingRow levelUpReadOnly(String labelKey, java.util.function.Supplier<String> state) {
-        return new SettingRow("  " + Component.translatable(labelKey).getString(), state, button -> {});
-    }
-
-    private SettingRow levelUpAction(String labelKey, Runnable action) {
-        return new SettingRow("  " + Component.translatable(labelKey).getString(), () -> Component.translatable("gui.aura.open").getString(), button -> {
-            if (button == 0) {
-                action.run();
-            }
-        });
-    }
-
-    private SettingRow levelUpBool(String labelKey, BoolGetter getter, BoolSetter setter) {
-        return new SettingRow("  " + Component.translatable(labelKey).getString(), () -> boolState(getter.get()), button -> {
-            setter.set(!getter.get());
-            saveLevelUpConfig();
-        });
-    }
-
-    private SettingRow levelUpEnumTopBottom(String labelKey, StringGetter getter, StringSetter setter) {
-        return new SettingRow("  " + Component.translatable(labelKey).getString(), getter::get, button -> {
-            setter.set("top".equalsIgnoreCase(getter.get()) ? "bottom" : "top");
-            saveLevelUpConfig();
-        });
-    }
-
-    private SettingRow levelUpInt(String labelKey, IntGetter getter, IntSetter setter, int step, int min, int max) {
-        return new SettingRow("  " + Component.translatable(labelKey).getString(), () -> Integer.toString(getter.get()), button -> {
-            int delta = button == 1 ? -step : step;
-            setter.set(clampInt(getter.get() + delta, min, max));
-            saveLevelUpConfig();
-        });
-    }
-
-    private SettingRow levelUpDouble(String labelKey, DoubleGetter getter, DoubleSetter setter, double step, double min, double max) {
-        return new SettingRow("  " + Component.translatable(labelKey).getString(), () -> String.format(Locale.ROOT, "%.2f", getter.get()), button -> {
-            double delta = button == 1 ? -step : step;
-            setter.set(Math.max(min, Math.min(max, getter.get() + delta)));
-            saveLevelUpConfig();
-        });
-    }
-
-    private static final class SettingRow {
-        final String label;
-        final java.util.function.Supplier<String> state;
-        final IntConsumer onClick;
-
-        private SettingRow(String label, java.util.function.Supplier<String> state, Runnable onClick) {
-            this(label, state, button -> onClick.run());
-        }
-
-        private SettingRow(String label, java.util.function.Supplier<String> state, IntConsumer onClick) {
-            this.label = label;
-            this.state = state;
-            this.onClick = onClick;
-        }
-    }
-
-    @FunctionalInterface
-    private interface BoolGetter { boolean get(); }
-    @FunctionalInterface
-    private interface BoolSetter { void set(boolean value); }
-    @FunctionalInterface
-    private interface StringGetter { String get(); }
-    @FunctionalInterface
-    private interface StringSetter { void set(String value); }
-    @FunctionalInterface
-    private interface IntGetter { int get(); }
-    @FunctionalInterface
-    private interface IntSetter { void set(int value); }
-    @FunctionalInterface
-    private interface DoubleGetter { double get(); }
-    @FunctionalInterface
-    private interface DoubleSetter { void set(double value); }
 }

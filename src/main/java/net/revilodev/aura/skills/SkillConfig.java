@@ -87,6 +87,10 @@ public final class SkillConfig {
     public static double lootingChancePerLevel() { return LOOTING_CHANCE_PER_LEVEL.get(); }
     public static int fortuneBonusPerLevel() { return FORTUNE_BONUS_PER_LEVEL.get(); }
     public static boolean spawnWithSkillsBook() { return SPAWN_WITH_SKILLS_BOOK.get(); }
+    public static void setSpawnWithSkillsBook(boolean value) {
+        SPAWN_WITH_SKILLS_BOOK.set(value);
+        SPEC.save();
+    }
     public static int maxLevel(SkillId id) {
         ModConfigSpec.IntValue value = MAX_LEVELS.get(id);
         return value != null ? value.get() : (id == null ? 1 : id.defaultMaxLevel());
