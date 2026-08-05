@@ -31,9 +31,14 @@ import net.revilodev.aura.stats.CodexStats;
 import net.revilodev.aura.entity.projectile.BurstCubeProjectile;
 
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 
 public final class AbilityLogic {
+    private static final Map<UUID, UUID> BLOOD_DRAIN_TARGETS = new HashMap<>();
+
     private AbilityLogic() {}
 
     public static boolean tryActivate(ServerPlayer player, AbilityId id) {
@@ -74,8 +79,10 @@ public final class AbilityLogic {
     }
 
     private static boolean execute(ServerPlayer player, AbilityId id, int coreRank, double abilityPower) {
-        if (id == AbilityId.MAGIC_HEAL) return magicHeal(player, id, coreRank, abilityPower);
-        if (id == AbilityId.MAGIC_CLEANSE) return magicCleanse(player, id, coreRank, abilityPower);
+        if (id == AbilityId.BLOOD_HEAL) return bloodHeal(player, id, coreRank, abilityPower);
+        if (id == AbilityId.BLOOD_CLEANSE) return bloodCleanse(player, id, coreRank, abilityPower);
+        if (id == AbilityId.BLOOD_BURST) return bloodBurst(player, id, coreRank, abilityPower);
+        if (id == AbilityId.BLOOD_DRAIN) return bloodDrain(player, id, coreRank, abilityPower);
         if (id == AbilityId.WIND_DASH) return windDash(player, id, coreRank, abilityPower);
         if (id == AbilityId.WIND_LEAP) return windLeap(player, id, coreRank, abilityPower);
         if (id == AbilityId.WIND_LUNGE) return windLunge(player, id, coreRank, abilityPower);
@@ -87,6 +94,7 @@ public final class AbilityLogic {
             case PIERCE -> pierce(player, id, coreRank, abilityPower);
             case GLACIER -> glacier(player, id, coreRank, abilityPower);
             case STRIKE -> strike(player, id, coreRank, abilityPower);
+            case DRAIN -> bloodDrain(player, id, coreRank, abilityPower);
             case ZAP -> zap(player, id, coreRank, abilityPower);
             case AEGIS -> aegis(player, id, coreRank, abilityPower);
             case RAMPAGE -> rampage(player, id, coreRank, abilityPower);
@@ -95,19 +103,47 @@ public final class AbilityLogic {
         };
     }
 
-    private static boolean magicHeal(ServerPlayer player, AbilityId id, int coreRank, double abilityPower) {
+    private static boolean bloodHeal(ServerPlayer player, AbilityId id, int coreRank, double abilityPower) {
         player.heal(Math.max(1.0F, AbilityScaling.damage(id, coreRank, abilityPower) * 0.6F));
         fx(player, ParticleTypes.HEART, SoundEvents.AMETHYST_BLOCK_CHIME);
         return true;
     }
 
-    private static boolean magicCleanse(ServerPlayer player, AbilityId id, int coreRank, double abilityPower) {
+    private static boolean bloodCleanse(ServerPlayer player, AbilityId id, int coreRank, double abilityPower) {
         for (MobEffectInstance effect : List.copyOf(player.getActiveEffects())) {
             if (!effect.getEffect().value().isBeneficial()) player.removeEffect(effect.getEffect());
         }
         if (player.isOnFire()) player.clearFire();
         player.heal(Math.max(1.0F, AbilityScaling.damage(id, coreRank, abilityPower) * 0.35F));
         fx(player, ParticleTypes.WAX_OFF, SoundEvents.GENERIC_DRINK);
+        return true;
+    }
+
+    private static boolean bloodBurst(ServerPlayer player, AbilityId id, int coreRank, double abilityPower) {
+        List<LivingEntity> targets = nearby(player, AbilityScaling.radius(id, coreRank, abilityPower) + 1.5D);
+        if (targets.isEmpty()) return false;
+
+        float cost = Math.min(Math.max(0.0F, player.getHealth() - 1.0F), Math.max(1.0F, AbilityScaling.damage(id, coreRank, abilityPower)));
+        if (cost <= 0.0F) return false;
+
+        player.setHealth(player.getHealth() - cost);
+        for (LivingEntity target : targets) {
+            target.hurt(player.damageSources().magic(), cost);
+        }
+        spawnNovaRing(player, AbilityScaling.radius(id, coreRank, abilityPower) + 1.5D, ParticleTypes.DAMAGE_INDICATOR);
+        fx(player, ParticleTypes.DAMAGE_INDICATOR, SoundEvents.GENERIC_EXPLODE.value());
+        return true;
+    }
+
+    private static boolean bloodDrain(ServerPlayer player, AbilityId id, int coreRank, double abilityPower) {
+        double range = AbilityScaling.radius(id, coreRank, abilityPower) + 12.0D;
+        LivingEntity target = firstHitOnRay(player, player.getEyePosition(), player.getLookAngle().normalize(), range, 0.75D);
+        if (target == null) return false;
+
+        BLOOD_DRAIN_TARGETS.put(player.getUUID(), target.getUUID());
+        player.getData(AbilitiesAttachments.PLAYER_ABILITIES.get()).setActiveTicks(id, Math.max(40, AbilityScaling.durationTicks(id, coreRank, abilityPower)));
+        spawnRayParticles(player, player.getEyePosition(), target.position().add(0.0D, target.getBbHeight() * 0.5D, 0.0D), ParticleTypes.DAMAGE_INDICATOR);
+        fx(player, ParticleTypes.DAMAGE_INDICATOR, SoundEvents.BEACON_ACTIVATE);
         return true;
     }
 
@@ -331,7 +367,7 @@ public final class AbilityLogic {
             case LIGHTNING -> {}
             case POISON -> target.addEffect(new MobEffectInstance(MobEffects.POISON, duration, 1, false, true, true));
             case FORCE -> pullToward(target, player, 0.6D);
-            case MAGIC -> target.addEffect(new MobEffectInstance(MobEffects.WEAKNESS, Math.max(20, duration / 2), 0, false, true, true));
+            case BLOOD -> {}
             case WIND -> pullToward(target, player, 0.65D);
         }
     }
@@ -365,10 +401,58 @@ public final class AbilityLogic {
         for (AbilityId id : AbilityId.values()) {
             int active = abilities.activeTicks(id);
             if (active <= 0) continue;
-            if (id.specialization() != AbilitySpecialization.STORM) continue;
             abilities.setActiveTicks(id, active - 1);
-            tickStorm(player, id, abilities, skills);
+            if (id.specialization() == AbilitySpecialization.STORM) {
+                tickStorm(player, id, abilities, skills);
+            } else if (id == AbilityId.BLOOD_DRAIN) {
+                tickBloodDrain(player, id, abilities, skills);
+            }
         }
+        if (abilities.activeTicks(AbilityId.BLOOD_DRAIN) <= 0) {
+            BLOOD_DRAIN_TARGETS.remove(player.getUUID());
+        }
+    }
+
+    private static void tickBloodDrain(ServerPlayer player, AbilityId id, PlayerAbilities abilities, PlayerSkills skills) {
+        if (!(player.level() instanceof ServerLevel level)) return;
+
+        LivingEntity target = bloodDrainTarget(player, level);
+        if (target == null) {
+            abilities.setActiveTicks(id, 0);
+            BLOOD_DRAIN_TARGETS.remove(player.getUUID());
+            return;
+        }
+
+        int coreRank = Math.max(1, effectiveCoreRank(player, abilities, id));
+        double abilityPower = CodexAttributes.abilityPower(player, id);
+        double range = AbilityScaling.radius(id, coreRank, abilityPower) + 12.0D;
+        if (target.distanceToSqr(player) > range * range) {
+            abilities.setActiveTicks(id, 0);
+            BLOOD_DRAIN_TARGETS.remove(player.getUUID());
+            return;
+        }
+
+        Vec3 from = player.getEyePosition();
+        Vec3 to = target.position().add(0.0D, target.getBbHeight() * 0.5D, 0.0D);
+        if (abilities.activeTicks(id) % 2 == 0) {
+            spawnRayParticles(player, from, to, ParticleTypes.DAMAGE_INDICATOR);
+        }
+        if (abilities.activeTicks(id) % 10 != 0) return;
+
+        float damage = Math.max(1.0F, AbilityScaling.damage(id, coreRank, abilityPower) * 0.35F);
+        float before = target.getHealth();
+        if (target.hurt(player.damageSources().magic(), damage)) {
+            float drained = Math.max(0.0F, before - target.getHealth());
+            if (drained > 0.0F) player.heal(drained * 0.5F);
+        }
+        level.sendParticles(ParticleTypes.DAMAGE_INDICATOR, target.getX(), target.getY() + target.getBbHeight() * 0.5D, target.getZ(), 4, 0.18D, 0.25D, 0.18D, 0.01D);
+    }
+
+    private static LivingEntity bloodDrainTarget(ServerPlayer player, ServerLevel level) {
+        UUID targetId = BLOOD_DRAIN_TARGETS.get(player.getUUID());
+        if (targetId == null) return null;
+        var entity = level.getEntity(targetId);
+        return entity instanceof LivingEntity living && living.isAlive() ? living : null;
     }
 
     private static void tickStorm(ServerPlayer player, AbilityId id, PlayerAbilities abilities, PlayerSkills skills) {
@@ -407,6 +491,7 @@ public final class AbilityLogic {
             case POISON -> ParticleTypes.WITCH;
             case LIGHTNING -> ParticleTypes.ELECTRIC_SPARK;
             case FORCE -> ParticleTypes.CRIT;
+            case BLOOD -> ParticleTypes.DAMAGE_INDICATOR;
             case WIND -> ParticleTypes.CLOUD;
             default -> ParticleTypes.FLAME;
         };

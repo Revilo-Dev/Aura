@@ -30,6 +30,8 @@ public final class PlayerSkills implements INBTSerializable<CompoundTag> {
     public boolean tryUpgrade(SkillId id) {
         SkillDefinition def = SkillRegistry.def(id);
         if (def == null) return false;
+
+        // parent gate
         if (!canUnlock(id)) return false;
 
         int cur = level(id);
@@ -45,6 +47,7 @@ public final class PlayerSkills implements INBTSerializable<CompoundTag> {
     }
 
     public boolean tryDowngrade(SkillId id) {
+        // keep child investments valid
         if (!canDowngrade(id)) return false;
         int cur = level(id);
 
@@ -125,6 +128,7 @@ public final class PlayerSkills implements INBTSerializable<CompoundTag> {
         root.putInt("gp", points);
         root.putBoolean("startingBookGiven", startingBookGiven);
 
+        // packed levels
         CompoundTag l = new CompoundTag();
         for (SkillId id : SkillId.values()) l.putInt(id.name(), level(id));
 
@@ -137,8 +141,11 @@ public final class PlayerSkills implements INBTSerializable<CompoundTag> {
         initDefaults();
         if (nbt == null) return;
 
+        // current format
         if (nbt.contains("gp")) {
             points = Math.max(0, nbt.getInt("gp"));
+
+        // legacy fallback
         } else if (nbt.contains("p")) {
             CompoundTag p = nbt.getCompound("p");
             int total = 0;
@@ -163,6 +170,7 @@ public final class PlayerSkills implements INBTSerializable<CompoundTag> {
     }
 
     private void initDefaults() {
+        // reset per player state
         points = START_POINTS;
         for (SkillId id : SkillId.values()) levels.put(id, 0);
         modifiersDirty = true;

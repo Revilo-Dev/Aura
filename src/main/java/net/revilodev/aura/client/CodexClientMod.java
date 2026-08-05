@@ -18,8 +18,11 @@ import net.revilodev.aura.entity.ModEntities;
 @Mod(value = CodexMod.MOD_ID, dist = Dist.CLIENT)
 public final class CodexClientMod {
     public CodexClientMod(IEventBus modBus) {
+        // client config and screens
         AuraClientConfig.load();
         SkillsPanelClient.register();
+
+        // keybinds and render hooks
         AbilityKeybinds.register(modBus);
         SkillsBookKeybinds.register(modBus);
         modBus.addListener(CodexClientMod::onRegisterRenderers);
@@ -28,6 +31,7 @@ public final class CodexClientMod {
     }
 
     private static void onRegisterRenderers(EntityRenderersEvent.RegisterRenderers event) {
+        // custom projectile renderer
         event.registerEntityRenderer(ModEntities.BURST_CUBE.get(), BurstCubeProjectileRenderer::new);
     }
 }

@@ -229,8 +229,10 @@ public final class AbilityKeybinds {
         addElementShared(AbilityId.FORCE_BURST, "force", InputConstants.KEY_B);
         addElementShared(AbilityId.FORCE_RAMPAGE, "force", InputConstants.KEY_B);
 
-        addElementShared(AbilityId.MAGIC_HEAL, "magic", InputConstants.KEY_N);
-        addElementShared(AbilityId.MAGIC_CLEANSE, "magic", InputConstants.KEY_N);
+        addElementShared(AbilityId.BLOOD_HEAL, "blood", InputConstants.KEY_N);
+        addElementShared(AbilityId.BLOOD_CLEANSE, "blood", InputConstants.KEY_N);
+        addElementShared(AbilityId.BLOOD_BURST, "blood", InputConstants.KEY_N);
+        addElementShared(AbilityId.BLOOD_DRAIN, "blood", InputConstants.KEY_N);
 
         addElementShared(AbilityId.WIND_DASH, "wind", InputConstants.KEY_M);
         addElementShared(AbilityId.WIND_LEAP, "wind", InputConstants.KEY_M);

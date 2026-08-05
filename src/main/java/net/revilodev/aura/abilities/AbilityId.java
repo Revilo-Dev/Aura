@@ -36,9 +36,11 @@ public enum AbilityId {
     FORCE_BURST(AbilityElement.FORCE, AbilitySpecialization.BURST, AbilityNodeType.SPECIALIZATION, FORCE_AEGIS, SkillId.RESISTANCE, 1, 180, "blast"),
     FORCE_RAMPAGE(AbilityElement.FORCE, AbilitySpecialization.RAMPAGE, AbilityNodeType.SPECIALIZATION, FORCE_BURST, SkillId.RESISTANCE, 1, 300, "rampage"),
 
-    MAGIC(AbilityElement.MAGIC, null, AbilityNodeType.CORE, null, SkillId.VITALITY, 4, 0, "magic"),
-    MAGIC_HEAL(AbilityElement.MAGIC, AbilitySpecialization.STRIKE, AbilityNodeType.SPECIALIZATION, MAGIC, SkillId.VITALITY, 1, 180, "heal"),
-    MAGIC_CLEANSE(AbilityElement.MAGIC, AbilitySpecialization.AEGIS, AbilityNodeType.SPECIALIZATION, MAGIC_HEAL, SkillId.VITALITY, 1, 240, "cleanse"),
+    BLOOD(AbilityElement.BLOOD, null, AbilityNodeType.CORE, null, SkillId.VITALITY, 4, 0, "blood"),
+    BLOOD_HEAL(AbilityElement.BLOOD, AbilitySpecialization.STRIKE, AbilityNodeType.SPECIALIZATION, BLOOD, SkillId.VITALITY, 1, 180, "heal"),
+    BLOOD_CLEANSE(AbilityElement.BLOOD, AbilitySpecialization.AEGIS, AbilityNodeType.SPECIALIZATION, BLOOD_HEAL, SkillId.VITALITY, 1, 240, "cleanse"),
+    BLOOD_BURST(AbilityElement.BLOOD, AbilitySpecialization.BURST, AbilityNodeType.SPECIALIZATION, BLOOD_CLEANSE, SkillId.VITALITY, 1, 160, "blood-burst"),
+    BLOOD_DRAIN(AbilityElement.BLOOD, AbilitySpecialization.DRAIN, AbilityNodeType.SPECIALIZATION, BLOOD_BURST, SkillId.VITALITY, 1, 240, "blood_beam"),
 
     WIND(AbilityElement.WIND, null, AbilityNodeType.CORE, null, SkillId.AGILITY, 4, 0, "wind"),
     WIND_DASH(AbilityElement.WIND, AbilitySpecialization.STRIKE, AbilityNodeType.SPECIALIZATION, WIND, SkillId.AGILITY, 1, 120, "dash"),

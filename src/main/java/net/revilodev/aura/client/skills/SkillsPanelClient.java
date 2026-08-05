@@ -14,6 +14,7 @@ import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.api.distmarker.OnlyIn;
 import net.neoforged.bus.api.EventPriority;
+import net.neoforged.fml.ModList;
 import net.neoforged.neoforge.client.event.ScreenEvent;
 import net.neoforged.neoforge.common.NeoForge;
 import net.revilodev.aura.CodexMod;
@@ -83,6 +84,9 @@ public final class SkillsPanelClient {
     private static final int SETTINGS_VIEW_PAD_X = 6;
     private static final int SETTINGS_VIEW_TOP = 18;
     private static final int SETTINGS_VIEW_BOTTOM_PAD = 12;
+    private static final int INVENTORY_BUTTON_X = 125;
+    private static final int INVENTORY_BUTTON_X_WITH_BOUNDLESS = 145;
+    private static final int INVENTORY_BUTTON_Y = 61;
 
     private static final Map<Screen, State> STATES = new WeakHashMap<>();
     private static Field LEFT_FIELD;
@@ -112,7 +116,7 @@ public final class SkillsPanelClient {
         State st = new State(inv);
         STATES.put(screen, st);
 
-        st.btn = new SkillsToggleButton(inv.getGuiLeft() + 145, inv.getGuiTop() + 61, BTN_TEX, BTN_TEX_HOVER, () -> toggle(st));
+        st.btn = new SkillsToggleButton(inv.getGuiLeft() + inventoryButtonX(), inv.getGuiTop() + INVENTORY_BUTTON_Y, BTN_TEX, BTN_TEX_HOVER, () -> toggle(st));
         st.bg = new PanelBackground(0, 0, PANEL_W, PANEL_H, () -> st.activeTab.title());
         st.skillsList = new SkillListWidget(0, 0, SkillListWidget.gridWidth(), SkillListWidget.preferredHeight(), def -> {
             st.skillsDetails.setSkill(def);
@@ -180,9 +184,6 @@ public final class SkillsPanelClient {
             st.recipeBtnOffsetY = st.recipeBtn.getY() - inv.getGuiTop();
         }
         updateRecipeButtonPosition(inv, st);
-        if (!isRecipePanelOpen(inv)) {
-            st.closingRecipeForAura = false;
-        }
     }
 
     public static void onScreenRenderPost(ScreenEvent.Render.Post event) {
@@ -267,7 +268,9 @@ public final class SkillsPanelClient {
         }
         if (!st.open) return;
         if (event.getButton() == 0 && st.recipeBtn != null && st.recipeBtn.visible && st.recipeBtn.isMouseOver(mouseX, mouseY) && st.open) {
-            toggle(st);
+            closeAuraPanel(st);
+            st.recipeBtn.onPress();
+            event.setCanceled(true);
             return;
         }
         if (event.getButton() == 0 && (st.skillsTab.mouseClicked(mouseX, mouseY, event.getButton()) || st.abilitiesTab.mouseClicked(mouseX, mouseY, event.getButton()))) {
@@ -327,25 +330,38 @@ public final class SkillsPanelClient {
 
     private static void toggle(State st) {
         if (!st.open && AuraClientConfig.blockOpenSkillsAbilitiesPanel()) return;
-        st.open = !st.open;
-        lastOpen = st.open;
         if (st.open) {
-            if (st.originalLeft == null) st.originalLeft = getLeft(st.inv);
-            if (st.recipeBtn != null && isRecipePanelOpen(st.inv)) {
-                st.closingRecipeForAura = true;
-                st.recipeBtn.onPress();
-            }
-            setLeft(st.inv, computeCenteredLeft(st.inv));
-        } else if (st.originalLeft != null) {
-            setLeft(st.inv, st.originalLeft);
-            st.closingRecipeForAura = false;
+            closeAuraPanel(st);
+        } else {
+            openAuraPanel(st);
         }
+    }
 
+    private static void openAuraPanel(State st) {
+        if (st.recipeBtn == null) st.recipeBtn = findRecipeButton(st.inv);
+        if (st.recipeBtn != null && isRecipePanelOpen(st.inv)) {
+            st.recipeBtn.onPress();
+        }
+        st.open = true;
+        lastOpen = true;
+        if (st.originalLeft == null) st.originalLeft = getLeft(st.inv);
+        setLeft(st.inv, computeCenteredLeft(st.inv));
         reposition(st.inv, st);
         updateVisibility(st);
         applySkillsVsRecipePanelRule(st.inv, st);
 
         if (st.recipeBtn == null) st.recipeBtn = findRecipeButton(st.inv);
+    }
+
+    private static void closeAuraPanel(State st) {
+        st.open = false;
+        lastOpen = false;
+        if (st.originalLeft != null) {
+            setLeft(st.inv, st.originalLeft);
+        }
+        reposition(st.inv, st);
+        updateVisibility(st);
+        applySkillsVsRecipePanelRule(st.inv, st);
     }
 
     private static void setTab(State st, PanelTab tab) {
@@ -364,15 +380,15 @@ public final class SkillsPanelClient {
     }
 
     private static void applySkillsVsRecipePanelRule(InventoryScreen inv, State st) {
-        if (st.open) {
-            if (st.btn != null) st.btn.visible = true;
-            return;
-        }
+        if (st.btn != null) st.btn.visible = true;
+        toggleRecipeButtonVisibility(inv, true);
+    }
 
-        if (isRecipePanelOpen(inv)) {
-            if (st.btn != null) st.btn.visible = false;
-        } else {
-            if (st.btn != null) st.btn.visible = true;
+    private static void toggleRecipeButtonVisibility(InventoryScreen inv, boolean visible) {
+        for (var child : inv.children()) {
+            if (child instanceof ImageButton btn && btn.getWidth() == 20 && btn.getHeight() == 18) {
+                btn.visible = visible;
+            }
         }
     }
 
@@ -405,7 +421,7 @@ public final class SkillsPanelClient {
     }
 
     private static void reposition(InventoryScreen inv, State st) {
-        if (st.btn != null) st.btn.setPosition(inv.getGuiLeft() + 145, inv.getGuiTop() + 61);
+        if (st.btn != null) st.btn.setPosition(inv.getGuiLeft() + inventoryButtonX(), inv.getGuiTop() + INVENTORY_BUTTON_Y);
 
         int bgx = computePanelX(inv);
         int bgy = inv.getGuiTop();
@@ -433,6 +449,10 @@ public final class SkillsPanelClient {
         st.abilitiesTab.setPosition(bgx - 31, bgy + 34);
         st.playerBottomTab.setPosition(bgx + 4, bgy + PANEL_H - 3);
         st.settingsBottomTab.setPosition(bgx + 4 + 32 + 2, bgy + PANEL_H - 3);
+    }
+
+    private static int inventoryButtonX() {
+        return ModList.get().isLoaded("boundless") ? INVENTORY_BUTTON_X_WITH_BOUNDLESS : INVENTORY_BUTTON_X;
     }
 
     private static Integer getLeft(InventoryScreen inv) {
@@ -724,7 +744,7 @@ public final class SkillsPanelClient {
             case LIGHTNING -> 0xFFE36B;
             case POISON -> 0x96E07A;
             case FORCE -> 0xC4A5FF;
-            case MAGIC -> 0xFF9CDD;
+            case BLOOD -> 0xD94A5C;
             case WIND -> 0xA9FFD8;
         };
     }
@@ -795,7 +815,6 @@ public final class SkillsPanelClient {
         Integer recipeBtnOffsetX;
         Integer recipeBtnOffsetY;
         boolean open;
-        boolean closingRecipeForAura;
         Integer originalLeft;
         PanelTab activeTab = PanelTab.SKILLS;
         BottomPullTabButton playerBottomTab;

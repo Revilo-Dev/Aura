@@ -69,7 +69,7 @@ public final class AbilityListWidget extends AbstractWidget {
             AbilityElement.LIGHTNING,
             AbilityElement.POISON,
             AbilityElement.FORCE,
-            AbilityElement.MAGIC,
+            AbilityElement.BLOOD,
             AbilityElement.WIND
     );
 
@@ -98,6 +98,7 @@ public final class AbilityListWidget extends AbstractWidget {
         List<AbilityDefinition> all = AbilityRegistry.all();
         PlayerAbilities abilities = mc.player == null ? null : mc.player.getData(AbilitiesAttachments.PLAYER_ABILITIES.get());
 
+        // one column per element
         int visibleCol = 0;
         for (AbilityElement element : COLUMN_ORDER) {
             AbilityDefinition core = all.stream().filter(def -> def.element() == element && def.type() == net.revilodev.aura.abilities.AbilityNodeType.CORE).findFirst().orElse(null);
@@ -198,6 +199,8 @@ public final class AbilityListWidget extends AbstractWidget {
         PlayerAbilities abilities = mc.player.getData(AbilitiesAttachments.PLAYER_ABILITIES.get());
         PlayerSkills skills = mc.player.getData(SkillsAttachments.PLAYER_SKILLS.get());
         boolean editLocked = CodexAttributes.isAbilitySkillEditLocked(mc.player);
+
+        // header points
         if (headerVisible) {
             int textX = getX() + 1 + headerTextOffsetX;
             int textY = getY() + 4;
@@ -217,6 +220,8 @@ public final class AbilityListWidget extends AbstractWidget {
         int top = viewportY;
         RenderSystem.enableBlend();
         gg.enableScissor(viewportX, viewportY, viewportX + viewportW, viewportY + viewportH);
+
+        // dependency links
         for (Node node : nodes) {
             if (node.row <= 0 || node.def.required() == null) continue;
             int x = viewportX + node.col * (CELL_SIZE + GAP) - offsetX;
@@ -231,6 +236,8 @@ public final class AbilityListWidget extends AbstractWidget {
             int x = viewportX + node.col * (CELL_SIZE + GAP) - offsetX;
             int y = top + node.row * (CELL_SIZE + GAP) - offsetY;
             AbilityDefinition def = node.def;
+
+            // node state
             boolean hovered = isNodeVisible(x, y, viewportX, viewportY, viewportW, viewportH)
                     && mouseX >= x && mouseX <= x + CELL_SIZE && mouseY >= y && mouseY <= y + CELL_SIZE;
             int rank = abilities.rank(def.id());
@@ -298,6 +305,8 @@ public final class AbilityListWidget extends AbstractWidget {
         }
         PlayerAbilities abilities = mc.player.getData(AbilitiesAttachments.PLAYER_ABILITIES.get());
         boolean editLocked = CodexAttributes.isAbilitySkillEditLocked(mc.player);
+
+        // select first then send action
         selected = node.def.id();
         if (onClick != null) onClick.accept(node.def);
         if (!AuraClientConfig.abilityEnabled(node.def.id())) return true;
@@ -353,6 +362,8 @@ public final class AbilityListWidget extends AbstractWidget {
         if (!visible || !active || button != 0) return false;
         if (!dragging && !isMouseOver(mouseX, mouseY)) return false;
         dragging = true;
+
+        // drag moves viewport
         offsetX = Math.max(0, offsetX - (int) Math.round(dragX));
         offsetY = Math.max(0, offsetY - (int) Math.round(dragY));
         return true;
@@ -401,6 +412,7 @@ public final class AbilityListWidget extends AbstractWidget {
         List<StatPart> out = new ArrayList<>();
         out.add(new StatPart("Cooldown " + formatSeconds(AbilityScaling.cooldownTicks(id, level, skills)), ChatFormatting.YELLOW));
 
+        // default stat triplet
         String durationText = "Duration " + formatSeconds(AbilityScaling.durationTicks(id, level, 1.0D));
         String thirdText = "DPS " + formatDps(AbilityScaling.damage(id, level, 1.0D), AbilityScaling.durationTicks(id, level, 1.0D));
 
@@ -413,11 +425,18 @@ public final class AbilityListWidget extends AbstractWidget {
         } else if (id == AbilityId.WIND_LUNGE) {
             durationText = "Distance " + fmt(AbilityScaling.radius(id, level, 1.0D) + 4.0D);
             thirdText = "Damage " + fmt(AbilityScaling.damage(id, level, 1.0D) * 1.25D);
-        } else if (id == AbilityId.MAGIC_HEAL) {
+        } else if (id == AbilityId.BLOOD_HEAL) {
             durationText = null;
             thirdText = "Health " + fmt(AbilityScaling.damage(id, level, 1.0D) * 0.6D);
-        } else if (id == AbilityId.MAGIC_CLEANSE) {
+        } else if (id == AbilityId.BLOOD_CLEANSE) {
             durationText = null;
+        } else if (id == AbilityId.BLOOD_BURST) {
+            double cost = AbilityScaling.damage(id, level, 1.0D);
+            durationText = "Health Cost " + fmt(cost);
+            thirdText = "Damage " + fmt(cost);
+        } else if (id == AbilityId.BLOOD_DRAIN) {
+            durationText = "Duration " + formatSeconds(AbilityScaling.durationTicks(id, level, 1.0D));
+            thirdText = "Drain " + fmt(Math.max(1.0D, AbilityScaling.damage(id, level, 1.0D) * 0.35D)) + "/0.5s";
         } else if (id == AbilityId.FORCE_RAMPAGE) {
             int coreRank = Math.max(1, level);
             int strengthAmp = Math.min(4, coreRank / 2);
@@ -430,7 +449,7 @@ public final class AbilityListWidget extends AbstractWidget {
 
         if (id.specialization() == AbilitySpecialization.IMPLODE) {
             durationText = "Radius " + fmt(AbilityScaling.radius(id, level, 1.0D) + 1.0D);
-        } else if (id.specialization() == AbilitySpecialization.BURST) {
+        } else if (id.specialization() == AbilitySpecialization.BURST && id != AbilityId.BLOOD_BURST) {
             if (id == AbilityId.FIRE_BURST || id == AbilityId.ICE_BURST || id == AbilityId.POISON_BURST) {
                 durationText = "Projectiles " + (1 + Math.max(0, level * 2));
             } else if (id == AbilityId.FORCE_BURST) {

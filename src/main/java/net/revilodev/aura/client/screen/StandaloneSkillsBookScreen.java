@@ -562,7 +562,7 @@ public final class StandaloneSkillsBookScreen extends Screen {
             case LIGHTNING -> 0xFFE36B;
             case POISON -> 0x96E07A;
             case FORCE -> 0xC4A5FF;
-            case MAGIC -> 0xFF9CDD;
+            case BLOOD -> 0xD94A5C;
             case WIND -> 0xA9FFD8;
         };
     }

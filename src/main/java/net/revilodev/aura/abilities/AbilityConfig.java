@@ -1,5 +1,6 @@
 package net.revilodev.aura.abilities;
 
+import net.neoforged.fml.event.config.ModConfigEvent;
 import net.neoforged.neoforge.common.ModConfigSpec;
 
 import java.util.EnumMap;
@@ -24,6 +25,7 @@ public final class AbilityConfig {
     private static final EnumMap<AbilityId, ModConfigSpec.DoubleValue> DAMAGE = new EnumMap<>(AbilityId.class);
     private static final EnumMap<AbilityId, ModConfigSpec.DoubleValue> RADIUS = new EnumMap<>(AbilityId.class);
     private static final EnumMap<AbilityId, ModConfigSpec.IntValue> DURATION = new EnumMap<>(AbilityId.class);
+    private static volatile boolean configLoaded = false;
 
     static {
         ModConfigSpec.Builder builder = new ModConfigSpec.Builder();
@@ -75,15 +77,29 @@ public final class AbilityConfig {
 
     private AbilityConfig() {}
 
+    public static void onConfigLoaded() {
+        configLoaded = true;
+    }
+
+    public static void onConfigLoading(ModConfigEvent.Loading event) {
+        if (event.getConfig().getSpec() == SPEC) onConfigLoaded();
+    }
+
+    public static void onConfigReloading(ModConfigEvent.Reloading event) {
+        if (event.getConfig().getSpec() == SPEC) onConfigLoaded();
+    }
+
     public static int pointIntervalLevels() {
         return POINT_INTERVAL_LEVELS.get();
     }
 
     public static boolean abilitiesEnabled() {
+        if (!configLoaded) return true;
         return ENABLE_ABILITIES.get();
     }
 
     public static double cooldownMultiplier() {
+        if (!configLoaded) return 1.0D;
         return COOLDOWN_MULTIPLIER.get();
     }
 
@@ -92,6 +108,7 @@ public final class AbilityConfig {
     }
 
     public static boolean hudEnabled() {
+        if (!configLoaded) return true;
         return abilitiesEnabled() && ENABLE_HUD.get();
     }
 
@@ -101,6 +118,7 @@ public final class AbilityConfig {
     }
 
     public static boolean hudTimerText() {
+        if (!configLoaded) return true;
         return HUD_TIMER_TEXT.get();
     }
 
@@ -110,6 +128,7 @@ public final class AbilityConfig {
 
     public static int configuredCooldown(AbilityId id) {
         ModConfigSpec.IntValue value = COOLDOWNS.get(id);
+        if (!configLoaded) return id == null ? 0 : id.baseCooldownTicks();
         return value == null ? (id == null ? 0 : id.baseCooldownTicks()) : value.get();
     }
 
@@ -140,6 +159,7 @@ public final class AbilityConfig {
     public static boolean enabled(AbilityId id) {
         if (!abilitiesEnabled()) return false;
         ModConfigSpec.BooleanValue value = ENABLED.get(id);
+        if (!configLoaded) return value != null;
         return value != null && value.get();
     }
 

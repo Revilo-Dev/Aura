@@ -15,9 +15,11 @@ public final class SkillRegistry {
     private static final EnumMap<SkillId, List<SkillDefinition>> SECONDARY_BY_PARENT = new EnumMap<>(SkillId.class);
 
     static {
+        // empty buckets
         for (SkillCategory c : SkillCategory.values()) BY_CATEGORY.put(c, new java.util.ArrayList<>());
         for (SkillId id : SkillId.values()) SECONDARY_BY_PARENT.put(id, Collections.emptyList());
 
+        // build definitions once
         List<SkillDefinition> primaries = new java.util.ArrayList<>();
         EnumMap<SkillId, java.util.ArrayList<SkillDefinition>> secondaryLists = new EnumMap<>(SkillId.class);
         for (SkillId id : SkillId.values()) {
@@ -31,6 +33,7 @@ public final class SkillRegistry {
             }
         }
 
+        // freeze lookup tables
         for (SkillCategory category : SkillCategory.values()) {
             BY_CATEGORY.put(category, List.copyOf(BY_CATEGORY.get(category)));
         }

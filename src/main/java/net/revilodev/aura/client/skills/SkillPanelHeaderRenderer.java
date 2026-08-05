@@ -6,6 +6,7 @@ import net.minecraft.resources.ResourceLocation;
 import net.revilodev.aura.CodexMod;
 
 public final class SkillPanelHeaderRenderer {
+    // three slice header
     private static final ResourceLocation HEADER_TEX =
             ResourceLocation.fromNamespaceAndPath(CodexMod.MOD_ID, "textures/gui/3-slice-header.png");
 
@@ -24,11 +25,13 @@ public final class SkillPanelHeaderRenderer {
     }
 
     public static int width(Font font, String text) {
+        // text plus side caps
         int textWidth = Math.max(0, (int) Math.ceil(font.width(text) * TEXT_SCALE));
         return Math.max((SLICE_WIDTH * 2) + 1, textWidth + HORIZONTAL_PADDING * 2);
     }
 
     public static void draw(GuiGraphics gg, Font font, int x, int y, String text) {
+        // center stretch area
         int width = width(font, text);
         int middleWidth = Math.max(0, width - (SLICE_WIDTH * 2));
 
@@ -42,6 +45,7 @@ public final class SkillPanelHeaderRenderer {
         }
         gg.blit(HEADER_TEX, x + width - SLICE_WIDTH, y, TEXTURE_WIDTH - SLICE_WIDTH, 0, SLICE_WIDTH, TEXTURE_HEIGHT, TEXTURE_WIDTH, TEXTURE_HEIGHT);
 
+        // scaled title
         int textX = x + HORIZONTAL_PADDING;
         int textY = y + TEXT_OFFSET_Y;
 

@@ -6,6 +6,6 @@ public enum AbilityElement {
     LIGHTNING,
     POISON,
     FORCE,
-    MAGIC,
+    BLOOD,
     WIND
 }

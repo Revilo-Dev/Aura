@@ -12,15 +12,18 @@ public final class AbilityRegistry {
             AbilityId.LIGHTNING, AbilityId.LIGHTNING_STRIKE, AbilityId.LIGHTNING_ZAP, AbilityId.LIGHTNING_NOVA, AbilityId.LIGHTNING_IMPLODE, AbilityId.LIGHTNING_STORM,
             AbilityId.POISON, AbilityId.POISON_BURST, AbilityId.POISON_NOVA, AbilityId.POISON_IMPLODE,
             AbilityId.FORCE, AbilityId.FORCE_AEGIS, AbilityId.FORCE_BURST, AbilityId.FORCE_RAMPAGE,
-            AbilityId.MAGIC, AbilityId.MAGIC_HEAL, AbilityId.MAGIC_CLEANSE,
+            AbilityId.BLOOD, AbilityId.BLOOD_HEAL, AbilityId.BLOOD_CLEANSE, AbilityId.BLOOD_BURST, AbilityId.BLOOD_DRAIN,
             AbilityId.WIND, AbilityId.WIND_DASH, AbilityId.WIND_LEAP, AbilityId.WIND_LUNGE
     );
 
     static {
+        // id to definition map
         for (AbilityId id : AbilityId.values()) {
             AbilityDefinition def = AbilityDefinition.fromId(id);
             DEFINITIONS.put(id, def);
         }
+
+        // stable ui order
         java.util.ArrayList<AbilityDefinition> defs = new java.util.ArrayList<>();
         for (AbilityId id : DISPLAY_ORDER) {
             AbilityDefinition def = DEFINITIONS.get(id);

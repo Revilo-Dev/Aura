@@ -60,6 +60,7 @@ public final class AbilityHudOverlay {
         PlayerSkills skills = mc.player.getData(SkillsAttachments.PLAYER_SKILLS.get());
         GuiGraphics gg = event.getGuiGraphics();
 
+        // alt shows selection grid
         boolean showGrid = Screen.hasAltDown();
         List<AbilityId> displayed = showGrid
                 ? AbilityKeybinds.altDisplayAbilities()
@@ -95,10 +96,14 @@ public final class AbilityHudOverlay {
 
     private static List<AbilityId> activeSelectionAbilities(PlayerAbilities abilities) {
         if (abilities == null) return List.of();
+
+        // prefer recent uses
         List<AbilityId> recent = new ArrayList<>(abilities.recentAbilities());
         if (!recent.isEmpty()) {
             return List.copyOf(recent.subList(0, Math.min(4, recent.size())));
         }
+
+        // fallback to active picks
         List<AbilityId> selected = new ArrayList<>();
         for (AbilityElement element : AbilityElement.values()) {
             AbilityId id = abilities.selectedSpecialization(element);
@@ -127,6 +132,8 @@ public final class AbilityHudOverlay {
 
     private static void drawAbility(GuiGraphics gg, Font font, int x, int y, AbilityId id, PlayerAbilities abilities, PlayerSkills skills, boolean selected, boolean drawFrame) {
         if (id == null) return;
+
+        // fail flash and shake
         FailureState failure = activeFailure(id);
         int shakeX = 0;
         if (failure != null) {
@@ -148,6 +155,7 @@ public final class AbilityHudOverlay {
         AbilityDefinition def = AbilityRegistry.def(id);
         if (def != null) gg.blit(def.iconTexture(), drawX + 2, y + 2, 0, 0, 16, 16, 16, 16);
 
+        // cooldown fill
         int remaining = abilities.cooldownTicks(id);
         if (remaining > 0) {
             int rank = Math.max(1, abilities.rank(id));
@@ -189,6 +197,7 @@ public final class AbilityHudOverlay {
     }
 
     private static void drawOutlinedText(GuiGraphics gg, Font font, String text, int x, int y, int color, int outlineColor) {
+        // simple pixel outline
         gg.drawString(font, text, x - 1, y, outlineColor, false);
         gg.drawString(font, text, x + 1, y, outlineColor, false);
         gg.drawString(font, text, x, y - 1, outlineColor, false);

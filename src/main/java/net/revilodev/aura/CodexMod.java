@@ -24,19 +24,27 @@ public final class CodexMod {
     public static final String MOD_ID = "aura";
 
     public CodexMod(IEventBus modBus, ModContainer container) {
+        // core registries
         ModItems.register(modBus);                 // <-- REQUIRED
         CodexAttributes.register(modBus);
         CodexMobEffects.register(modBus);
         CodexPotions.register(modBus);
         ModEntities.register(modBus);
         CodexStats.register(modBus);
+
+        // server configs
         container.registerConfig(ModConfig.Type.SERVER, SkillConfig.SPEC);
         container.registerConfig(ModConfig.Type.SERVER, AbilityConfig.SPEC, MOD_ID + "-abilities-server.toml");
+        modBus.addListener(AbilityConfig::onConfigLoading);
+        modBus.addListener(AbilityConfig::onConfigReloading);
 
+        // player data and packets
         SkillsAttachments.REGISTER.register(modBus);
         AbilitiesAttachments.REGISTER.register(modBus);
         modBus.addListener(SkillsNetwork::onRegisterPayloadHandlers);
         modBus.addListener(AbilitiesNetwork::onRegisterPayloadHandlers);
+
+        // commands and gameplay hooks
         net.revilodev.aura.skills.command.SkillsCommands.register();
         net.revilodev.aura.abilities.command.AbilitiesCommands.register();
 

@@ -9,6 +9,7 @@ public enum AbilitySpecialization {
     PIERCE,
     GLACIER,
     STRIKE,
+    DRAIN,
     ZAP,
     AEGIS,
     RAMPAGE,

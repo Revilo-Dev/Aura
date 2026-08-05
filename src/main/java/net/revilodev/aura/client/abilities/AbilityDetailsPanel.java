@@ -268,11 +268,18 @@ public final class AbilityDetailsPanel extends AbstractWidget {
         } else if (id == AbilityId.WIND_LUNGE) {
             durationText = "Distance " + fmt(AbilityScaling.radius(id, level, 1.0D) + 4.0D);
             thirdText = "Damage " + fmt(AbilityScaling.damage(id, level, 1.0D) * 1.25D);
-        } else if (id == AbilityId.MAGIC_HEAL) {
+        } else if (id == AbilityId.BLOOD_HEAL) {
             durationText = null;
             thirdText = "Health " + fmt(AbilityScaling.damage(id, level, 1.0D) * 0.6D);
-        } else if (id == AbilityId.MAGIC_CLEANSE) {
+        } else if (id == AbilityId.BLOOD_CLEANSE) {
             durationText = null;
+        } else if (id == AbilityId.BLOOD_BURST) {
+            double cost = AbilityScaling.damage(id, level, 1.0D);
+            durationText = "Health Cost " + fmt(cost);
+            thirdText = "Damage " + fmt(cost);
+        } else if (id == AbilityId.BLOOD_DRAIN) {
+            durationText = "Duration " + formatSeconds(AbilityScaling.durationTicks(id, level, 1.0D));
+            thirdText = "Drain " + fmt(Math.max(1.0D, AbilityScaling.damage(id, level, 1.0D) * 0.35D)) + "/0.5s";
         } else if (id == AbilityId.FORCE_RAMPAGE) {
             int coreRank = Math.max(1, level);
             int strengthAmp = Math.min(4, coreRank / 2);
@@ -285,7 +292,7 @@ public final class AbilityDetailsPanel extends AbstractWidget {
 
         if (id.specialization() == AbilitySpecialization.IMPLODE) {
             durationText = "Radius " + fmt(AbilityScaling.radius(id, level, 1.0D) + 1.0D);
-        } else if (id.specialization() == AbilitySpecialization.BURST) {
+        } else if (id.specialization() == AbilitySpecialization.BURST && id != AbilityId.BLOOD_BURST) {
             if (id == AbilityId.FIRE_BURST || id == AbilityId.ICE_BURST || id == AbilityId.POISON_BURST) {
                 durationText = "Projectiles " + (1 + Math.max(0, level * 2));
             } else if (id == AbilityId.FORCE_BURST) {

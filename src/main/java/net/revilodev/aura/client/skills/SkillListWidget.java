@@ -69,6 +69,8 @@ public final class SkillListWidget extends AbstractWidget {
 
     public void reloadSkills() {
         nodes.clear();
+
+        // primary columns with child rows
         List<SkillDefinition> primaries = SkillRegistry.primarySkills();
         int col = 0;
         for (SkillDefinition primary : primaries) {
@@ -126,6 +128,8 @@ public final class SkillListWidget extends AbstractWidget {
         reloadSkills();
         PlayerSkills ps = mc.player.getData(SkillsAttachments.PLAYER_SKILLS.get());
         boolean editLocked = CodexAttributes.isAbilitySkillEditLocked(mc.player);
+
+        // header points
         if (headerVisible) {
             int textX = getX() + 1;
             int textY = getY() + 4;
@@ -136,6 +140,8 @@ public final class SkillListWidget extends AbstractWidget {
         int top = getY() + HEADER_HEIGHT;
         RenderSystem.enableBlend();
         gg.enableScissor(getX(), top, getX() + width, getY() + height);
+
+        // parent links
         for (Node node : nodes) {
             if (node.def.primary() || node.row <= 0) continue;
 
@@ -151,6 +157,8 @@ public final class SkillListWidget extends AbstractWidget {
             int x = getX() + node.col * (CELL_SIZE + GAP);
             int y = top + node.row * (CELL_SIZE + GAP);
             SkillDefinition def = node.def;
+
+            // node state
             boolean hovered = isNodeVisible(x, y)
                     && mouseX >= x && mouseX <= x + CELL_SIZE && mouseY >= y && mouseY <= y + CELL_SIZE;
             boolean learned = ps.level(def.id()) > 0;
@@ -204,6 +212,8 @@ public final class SkillListWidget extends AbstractWidget {
             if (onClick != null) onClick.accept(null);
             return true;
         }
+
+        // select first then send action
         selected = node.def.id();
         if (onClick != null) onClick.accept(node.def);
         if (!AuraClientConfig.skillEnabled(node.def.id())) return true;

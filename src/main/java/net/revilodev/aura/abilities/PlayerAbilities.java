@@ -44,6 +44,8 @@ public final class PlayerAbilities implements INBTSerializable<CompoundTag> {
 
     public boolean tryUpgrade(AbilityId id) {
         if (!canUpgrade(id)) return false;
+
+        // scaling cost per rank
         int cur = rank(id);
         points -= upgradeCost(id);
         ranks.put(id, cur + 1);
@@ -52,6 +54,8 @@ public final class PlayerAbilities implements INBTSerializable<CompoundTag> {
 
     public boolean tryDowngrade(AbilityId id) {
         if (!canDowngrade(id)) return false;
+
+        // refund current rank cost
         int cur = rank(id);
         int next = cur - 1;
         ranks.put(id, next);
@@ -81,6 +85,8 @@ public final class PlayerAbilities implements INBTSerializable<CompoundTag> {
         if (id == null) return false;
         int cur = rank(id);
         if (cur <= 0) return false;
+
+        // keep dependent nodes valid
         if (cur == 1) {
             for (AbilityId other : AbilityId.values()) {
                 if (other.required() == id && rank(other) > 0) return false;
@@ -148,6 +154,8 @@ public final class PlayerAbilities implements INBTSerializable<CompoundTag> {
     public void markUsed(AbilityId id) {
         if (id == null) return;
         if (id.isCore() && !unlocked(id)) return;
+
+        // recent bar order
         recent.remove(id);
         recent.add(0, id);
         while (recent.size() > RECENT_COUNT) {
@@ -189,6 +197,7 @@ public final class PlayerAbilities implements INBTSerializable<CompoundTag> {
         CompoundTag tag = new CompoundTag();
         tag.putInt("points", points);
 
+        // main state buckets
         CompoundTag ranksTag = new CompoundTag();
         CompoundTag cooldownTag = new CompoundTag();
         CompoundTag activeTag = new CompoundTag();
@@ -203,6 +212,8 @@ public final class PlayerAbilities implements INBTSerializable<CompoundTag> {
         tag.put("ranks", ranksTag);
         tag.put("cooldowns", cooldownTag);
         tag.put("active", activeTag);
+
+        // ui state
         CompoundTag recentTag = new CompoundTag();
         CompoundTag selectedTag = new CompoundTag();
         for (int i = 0; i < recent.size(); i++) {
@@ -222,6 +233,7 @@ public final class PlayerAbilities implements INBTSerializable<CompoundTag> {
         if (nbt == null) return;
         points = Math.max(0, nbt.getInt("points"));
 
+        // restore saved maps
         CompoundTag ranksTag = nbt.getCompound("ranks");
         CompoundTag cooldownTag = nbt.getCompound("cooldowns");
         CompoundTag activeTag = nbt.getCompound("active");
@@ -258,9 +270,13 @@ public final class PlayerAbilities implements INBTSerializable<CompoundTag> {
 
     private static AbilityId parseAbility(String name) {
         if (name == null || name.isEmpty()) return null;
+        if ("MAGIC".equals(name)) return AbilityId.BLOOD;
+        if ("MAGIC_HEAL".equals(name)) return AbilityId.BLOOD_HEAL;
+        if ("MAGIC_CLEANSE".equals(name)) return AbilityId.BLOOD_CLEANSE;
         try {
             return AbilityId.valueOf(name);
         } catch (Exception ignored) {
+            // invalid saved id
             return null;
         }
     }
