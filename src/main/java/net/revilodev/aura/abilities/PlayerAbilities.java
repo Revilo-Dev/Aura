@@ -14,6 +14,7 @@ public final class PlayerAbilities implements INBTSerializable<CompoundTag> {
     private int points;
     private final EnumMap<AbilityId, Integer> ranks = new EnumMap<>(AbilityId.class);
     private final EnumMap<AbilityId, Integer> cooldowns = new EnumMap<>(AbilityId.class);
+    private final EnumMap<AbilityId, Integer> switchCooldowns = new EnumMap<>(AbilityId.class);
     private final EnumMap<AbilityId, Integer> activeTicks = new EnumMap<>(AbilityId.class);
     private final EnumMap<AbilityElement, AbilityId> selectedSpecializations = new EnumMap<>(AbilityElement.class);
     private final List<AbilityId> recent = new ArrayList<>();
@@ -42,6 +43,10 @@ public final class PlayerAbilities implements INBTSerializable<CompoundTag> {
         return Math.max(0, activeTicks.getOrDefault(id, 0));
     }
 
+    public int switchCooldownTicks(AbilityId id) {
+        return Math.max(0, switchCooldowns.getOrDefault(id, 0));
+    }
+
     public boolean tryUpgrade(AbilityId id) {
         if (!canUpgrade(id)) return false;
 
@@ -59,6 +64,7 @@ public final class PlayerAbilities implements INBTSerializable<CompoundTag> {
         int cur = rank(id);
         int next = cur - 1;
         ranks.put(id, next);
+        clearLockedSpecializations();
         points += cur;
         if (next <= 0) {
             cooldowns.remove(id);
@@ -107,6 +113,7 @@ public final class PlayerAbilities implements INBTSerializable<CompoundTag> {
         if (id == null) return;
         int next = Math.max(0, Math.min(id.maxRank(), rank));
         ranks.put(id, next);
+        clearLockedSpecializations();
         if (next <= 0) {
             cooldowns.remove(id);
             activeTicks.remove(id);
@@ -128,6 +135,14 @@ public final class PlayerAbilities implements INBTSerializable<CompoundTag> {
         else activeTicks.put(id, next);
     }
 
+    // sets the specialization switch cooldown
+    public void setSwitchCooldownTicks(AbilityId id, int ticks) {
+        if (id == null) return;
+        int next = Math.max(0, ticks);
+        if (next <= 0) switchCooldowns.remove(id);
+        else switchCooldowns.put(id, next);
+    }
+
     public AbilityId selectedSpecialization(AbilityElement element) {
         return selectedSpecializations.get(element);
     }
@@ -138,6 +153,11 @@ public final class PlayerAbilities implements INBTSerializable<CompoundTag> {
         return true;
     }
 
+    /** Removes a selection when its core ability mastery no longer meets the lock level. */
+    public boolean clearLockedSpecializations() {
+        return selectedSpecializations.entrySet().removeIf(entry -> AbilityConfig.affinityLocked(this, entry.getValue()));
+    }
+
     public boolean tickCooldowns() {
         boolean changed = false;
         for (AbilityId id : AbilityId.values()) {
@@ -146,6 +166,13 @@ public final class PlayerAbilities implements INBTSerializable<CompoundTag> {
             int next = cur - 1;
             if (next <= 0) cooldowns.remove(id);
             else cooldowns.put(id, next);
+            changed = true;
+        }
+        for (AbilityId id : AbilityId.values()) {
+            int cur = switchCooldownTicks(id);
+            if (cur <= 0) continue;
+            if (cur == 1) switchCooldowns.remove(id);
+            else switchCooldowns.put(id, cur - 1);
             changed = true;
         }
         return changed;
@@ -184,6 +211,7 @@ public final class PlayerAbilities implements INBTSerializable<CompoundTag> {
         points = 0;
         ranks.clear();
         cooldowns.clear();
+        switchCooldowns.clear();
         activeTicks.clear();
         selectedSpecializations.clear();
         recent.clear();
@@ -200,17 +228,21 @@ public final class PlayerAbilities implements INBTSerializable<CompoundTag> {
         // main state buckets
         CompoundTag ranksTag = new CompoundTag();
         CompoundTag cooldownTag = new CompoundTag();
+        CompoundTag switchCooldownTag = new CompoundTag();
         CompoundTag activeTag = new CompoundTag();
         for (AbilityId id : AbilityId.values()) {
             ranksTag.putInt(id.name(), rank(id));
             int cooldown = cooldownTicks(id);
             if (cooldown > 0) cooldownTag.putInt(id.name(), cooldown);
+            int switchCooldown = switchCooldownTicks(id);
+            if (switchCooldown > 0) switchCooldownTag.putInt(id.name(), switchCooldown);
             int active = activeTicks(id);
             if (active > 0) activeTag.putInt(id.name(), active);
         }
 
         tag.put("ranks", ranksTag);
         tag.put("cooldowns", cooldownTag);
+        tag.put("switchCooldowns", switchCooldownTag);
         tag.put("active", activeTag);
 
         // ui state
@@ -236,6 +268,7 @@ public final class PlayerAbilities implements INBTSerializable<CompoundTag> {
         // restore saved maps
         CompoundTag ranksTag = nbt.getCompound("ranks");
         CompoundTag cooldownTag = nbt.getCompound("cooldowns");
+        CompoundTag switchCooldownTag = nbt.getCompound("switchCooldowns");
         CompoundTag activeTag = nbt.getCompound("active");
         CompoundTag recentTag = nbt.getCompound("recent");
         CompoundTag selectedTag = nbt.getCompound("selectedSpecializations");
@@ -245,6 +278,9 @@ public final class PlayerAbilities implements INBTSerializable<CompoundTag> {
             }
             if (cooldownTag.contains(id.name())) {
                 cooldowns.put(id, Math.max(0, cooldownTag.getInt(id.name())));
+            }
+            if (switchCooldownTag.contains(id.name())) {
+                switchCooldowns.put(id, Math.max(0, switchCooldownTag.getInt(id.name())));
             }
             if (activeTag.contains(id.name())) {
                 activeTicks.put(id, Math.max(0, activeTag.getInt(id.name())));
@@ -266,6 +302,7 @@ public final class PlayerAbilities implements INBTSerializable<CompoundTag> {
                 selectedSpecializations.put(element, id);
             }
         }
+        clearLockedSpecializations();
     }
 
     private static AbilityId parseAbility(String name) {

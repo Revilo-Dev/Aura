@@ -12,6 +12,7 @@ import net.revilodev.aura.CodexMod;
 import net.revilodev.aura.abilities.AbilityConfig;
 import net.revilodev.aura.abilities.event.AbilityPowerCalculationEvent;
 
+// ability power enchantment events
 public final class AbilityPowerEnchantmentEvents {
     private static final ResourceKey<Enchantment> ABILITY_POWER_ENCHANT =
             ResourceKey.create(Registries.ENCHANTMENT, ResourceLocation.fromNamespaceAndPath(CodexMod.MOD_ID, "ability_power"));

@@ -12,6 +12,7 @@ import net.neoforged.neoforge.common.NeoForge;
 import net.revilodev.aura.client.screen.StandaloneSkillsBookScreen;
 
 @OnlyIn(Dist.CLIENT)
+// skills book keybinds
 public final class SkillsBookKeybinds {
     private static final String CATEGORY = "key.categories.aura";
     private static final KeyMapping OPEN_BOOK = new KeyMapping(

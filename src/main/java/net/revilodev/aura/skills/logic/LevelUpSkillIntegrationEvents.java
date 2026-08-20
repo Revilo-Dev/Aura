@@ -18,6 +18,7 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.UUID;
 
+// level up skill integration events
 public final class LevelUpSkillIntegrationEvents {
     private LevelUpSkillIntegrationEvents() {}
 

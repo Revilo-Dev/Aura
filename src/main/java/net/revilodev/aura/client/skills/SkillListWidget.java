@@ -131,7 +131,7 @@ public final class SkillListWidget extends AbstractWidget {
 
         // header points
         if (headerVisible) {
-            int textX = getX() + 1;
+            int textX = getX() + 10;
             int textY = getY() + 4;
             drawScaledIcon(gg, SKILL_ORB_TEX, textX - 10, textY - 1, 8);
             drawScaledText(gg, Component.translatable("gui.aura.points.skill_short", ps.points()).getString(), textX, textY, 0x6AB2FF, POINTS_TEXT_SCALE);

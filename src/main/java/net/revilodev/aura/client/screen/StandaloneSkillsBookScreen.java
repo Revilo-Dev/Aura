@@ -17,6 +17,7 @@ import net.revilodev.aura.client.AuraClientConfig;
 import net.revilodev.aura.client.BottomPullTabButton;
 import net.revilodev.aura.client.PanelTab;
 import net.revilodev.aura.client.PanelTabButton;
+import net.revilodev.aura.client.SettingsBackTabButton;
 import net.revilodev.aura.client.abilities.AbilityKeybinds;
 import net.revilodev.aura.client.abilities.AbilityDetailsPanel;
 import net.revilodev.aura.client.abilities.AbilityListWidget;
@@ -29,6 +30,7 @@ import net.revilodev.aura.abilities.AbilityId;
 import net.revilodev.aura.abilities.AbilityRegistry;
 import net.revilodev.aura.skills.SkillBalance;
 import net.revilodev.aura.client.AuraBookSettingsModel;
+import net.revilodev.aura.client.AuraSettingsView;
 import net.revilodev.aura.skills.SkillDefinition;
 import net.revilodev.aura.skills.SkillId;
 import net.revilodev.aura.skills.SkillRegistry;
@@ -38,6 +40,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 @OnlyIn(Dist.CLIENT)
+// standalone skills book screen
 public final class StandaloneSkillsBookScreen extends Screen {
     private static final ResourceLocation PANEL_TEX =
             ResourceLocation.fromNamespaceAndPath(CodexMod.MOD_ID, "textures/gui/skills_panel.png");
@@ -69,15 +72,10 @@ public final class StandaloneSkillsBookScreen extends Screen {
 
     private BottomPullTabButton playerBottomTab;
     private BottomPullTabButton settingsBottomTab;
+    private SettingsBackTabButton backTab;
     private ViewMode viewMode = ViewMode.MAIN;
 
-    private final AuraBookSettingsModel settingsModel = new AuraBookSettingsModel();
-    private List<AuraBookSettingsModel.Row> settingsRows = new ArrayList<>();
-    private int settingsScroll = 0;
-    private static final int SETTINGS_ROW_H = 7;
-    private static final int SETTINGS_VIEW_PAD_X = 6;
-    private static final int SETTINGS_VIEW_TOP = 18;
-    private static final int SETTINGS_VIEW_BOTTOM_PAD = 12;
+    private final AuraSettingsView settingsView = new AuraSettingsView(new AuraBookSettingsModel());
 
     private static final int INNER_PAD_X = 6;
     private static final int INNER_PAD_TOP = 5;
@@ -134,6 +132,7 @@ public final class StandaloneSkillsBookScreen extends Screen {
         settingsBottomTab = new BottomPullTabButton(bottomX + 32 + 2, bottomY, Component.translatable("gui.aura.settings"), SETTINGS_TAB_TEX, SETTINGS_TAB_TEX_PULLED, SETTINGS_TAB_TEX_PULLED_ALT, () -> setViewMode(ViewMode.SETTINGS));
         playerBottomTab.setPosition(bottomX - 3, bottomY);
         settingsBottomTab.setPosition((bottomX - 3) + 32 + 2, bottomY);
+        backTab = new SettingsBackTabButton(panelX - 25, panelY + 143, () -> setViewMode(ViewMode.MAIN));
 
         addRenderableWidget(skillsList);
         addRenderableWidget(skillsDetails);
@@ -148,15 +147,10 @@ public final class StandaloneSkillsBookScreen extends Screen {
         addRenderableWidget(abilitiesTab);
         addRenderableWidget(playerBottomTab);
         addRenderableWidget(settingsBottomTab);
+        addRenderableWidget(backTab);
 
-        initSettingsRows();
         setViewMode(ViewMode.MAIN);
         setTab(activeTab);
-    }
-
-    private void initSettingsRows() {
-        settingsModel.rebuild();
-        settingsRows = settingsModel.rows();
     }
 
     @Override
@@ -171,23 +165,24 @@ public final class StandaloneSkillsBookScreen extends Screen {
                 Minecraft.getInstance().font,
                 panelX + HEADER_OFFSET_X,
                 panelY - SkillPanelHeaderRenderer.height() + HEADER_OFFSET_Y,
-                viewMode == ViewMode.SETTINGS ? Component.translatable("gui.aura.settings").getString() : (viewMode == ViewMode.PLAYER ? Component.translatable("gui.aura.player").getString() : activeTab.title())
+                viewMode == ViewMode.SETTINGS ? settingsView.title().getString() : (viewMode == ViewMode.PLAYER ? Component.translatable("gui.aura.player").getString() : activeTab.title())
         );
         if (viewMode == ViewMode.PLAYER) {
             renderPlayerView(gg, mouseX, mouseY);
         }
         if (viewMode == ViewMode.SETTINGS) {
-            renderSettingsRows(gg, mouseX, mouseY);
+            settingsView.render(gg, panelX, panelY, mouseX, mouseY);
         }
         super.render(gg, mouseX, mouseY, partialTick);
+        if (viewMode == ViewMode.SETTINGS) {
+            settingsView.renderTooltip(gg, mouseX, mouseY);
+        }
     }
 
     @Override
     public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
-        if (viewMode == ViewMode.SETTINGS && isInSettingsView(mouseX, mouseY)) {
-            int maxScroll = Math.max(0, settingsRows.size() * SETTINGS_ROW_H - settingsViewHeight());
-            settingsScroll = Math.max(0, Math.min(maxScroll, settingsScroll - (int) Math.signum(scrollY) * 14));
-            return true;
+        if (viewMode == ViewMode.SETTINGS) {
+            if (settingsView.mouseScrolled(panelX, panelY, mouseX, mouseY, scrollY)) return true;
         }
         if (viewMode == ViewMode.MAIN) {
             if (activeTab == PanelTab.SKILLS && skillsDetails != null && skillsDetails.mouseScrolled(mouseX, mouseY, scrollX, scrollY)) {
@@ -210,13 +205,7 @@ public final class StandaloneSkillsBookScreen extends Screen {
         }
 
         if (viewMode == ViewMode.SETTINGS || viewMode == ViewMode.PLAYER) {
-            if (viewMode == ViewMode.SETTINGS && (button == 0 || button == 1) && isInSettingsView(mouseX, mouseY)) {
-                int index = (int) ((mouseY - settingsViewY() + settingsScroll) / SETTINGS_ROW_H);
-                if (index >= 0 && index < settingsRows.size()) {
-                    settingsModel.clickRow(index, button);
-                    return true;
-                }
-            }
+            if (viewMode == ViewMode.SETTINGS && settingsView.mouseClicked(panelX, panelY, mouseX, mouseY, button)) return true;
             if (isInsidePanelOrTabs(mouseX, mouseY)) return super.mouseClicked(mouseX, mouseY, button);
             return false;
         }
@@ -299,7 +288,7 @@ public final class StandaloneSkillsBookScreen extends Screen {
 
     @Override
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
-        if (viewMode == ViewMode.SETTINGS && settingsModel.keyPressed(keyCode)) {
+        if (viewMode == ViewMode.SETTINGS && settingsView.keyPressed(keyCode)) {
             return true;
         }
         return super.keyPressed(keyCode, scanCode, modifiers);
@@ -307,7 +296,7 @@ public final class StandaloneSkillsBookScreen extends Screen {
 
     @Override
     public boolean charTyped(char codePoint, int modifiers) {
-        if (viewMode == ViewMode.SETTINGS && settingsModel.charTyped(codePoint)) {
+        if (viewMode == ViewMode.SETTINGS && settingsView.charTyped(codePoint)) {
             return true;
         }
         return super.charTyped(codePoint, modifiers);
@@ -315,6 +304,7 @@ public final class StandaloneSkillsBookScreen extends Screen {
 
     @Override
     public boolean mouseDragged(double mouseX, double mouseY, int button, double dragX, double dragY) {
+        if (viewMode == ViewMode.SETTINGS && settingsView.mouseDragged(panelY, mouseY, button)) return true;
         if (viewMode == ViewMode.MAIN && activeTab == PanelTab.ABILITIES && abilityList != null && abilityList.mouseDragged(mouseX, mouseY, button, dragX, dragY)) {
             return true;
         }
@@ -323,6 +313,7 @@ public final class StandaloneSkillsBookScreen extends Screen {
 
     @Override
     public boolean mouseReleased(double mouseX, double mouseY, int button) {
+        if (viewMode == ViewMode.SETTINGS && settingsView.mouseReleased(button)) return true;
         if (abilityList != null) abilityList.endDrag();
         return super.mouseReleased(mouseX, mouseY, button);
     }
@@ -338,16 +329,21 @@ public final class StandaloneSkillsBookScreen extends Screen {
         settingsBottomTab.setSelected(mode == ViewMode.SETTINGS);
 
         boolean main = mode == ViewMode.MAIN;
-        boolean settings = mode == ViewMode.SETTINGS;
         boolean skillsActive = main && activeTab == PanelTab.SKILLS;
         boolean abilitiesActive = main && activeTab == PanelTab.ABILITIES;
 
-        skillsTab.visible = true;
-        skillsTab.active = true;
+        skillsTab.visible = main;
+        skillsTab.active = main;
         skillsTab.setSelected(skillsActive);
-        abilitiesTab.visible = true;
-        abilitiesTab.active = true;
+        abilitiesTab.visible = main;
+        abilitiesTab.active = main;
         abilitiesTab.setSelected(abilitiesActive);
+        playerBottomTab.visible = main;
+        playerBottomTab.active = main;
+        settingsBottomTab.visible = main;
+        settingsBottomTab.active = main;
+        backTab.visible = !main;
+        backTab.active = !main;
 
         skillsList.visible = skillsActive;
         skillsList.active = skillsActive;
@@ -368,7 +364,6 @@ public final class StandaloneSkillsBookScreen extends Screen {
         abilityDetails.selectButton().visible = false;
         abilityDetails.selectButton().active = false;
 
-        if (settings) settingsScroll = Math.max(0, settingsScroll);
     }
 
     private boolean isInsidePanelOrTabs(double mouseX, double mouseY) {
@@ -378,61 +373,6 @@ public final class StandaloneSkillsBookScreen extends Screen {
         int bottom = panelY + panelHeight + 35;
         int tabLeft = panelX - 31;
         return mouseX >= tabLeft && mouseX <= right && mouseY >= top && mouseY <= bottom;
-    }
-
-    private int settingsViewY() {
-        return panelY + SETTINGS_VIEW_TOP;
-    }
-
-    private int settingsViewHeight() {
-        return panelHeight - SETTINGS_VIEW_TOP - SETTINGS_VIEW_BOTTOM_PAD;
-    }
-
-    private boolean isInSettingsView(double mouseX, double mouseY) {
-        int x0 = panelX + SETTINGS_VIEW_PAD_X;
-        int x1 = panelX + panelWidth - SETTINGS_VIEW_PAD_X;
-        int y0 = settingsViewY();
-        int y1 = y0 + settingsViewHeight();
-        return mouseX >= x0 && mouseX <= x1 && mouseY >= y0 && mouseY <= y1;
-    }
-
-    private void renderSettingsRows(GuiGraphics gg, int mouseX, int mouseY) {
-        int xLeft = panelX + SETTINGS_VIEW_PAD_X + 7;
-        int xRight = panelX + panelWidth - SETTINGS_VIEW_PAD_X - 7;
-        int y0 = settingsViewY();
-        int y1 = y0 + settingsViewHeight();
-        float scale = 0.5F;
-
-        gg.enableScissor(panelX + SETTINGS_VIEW_PAD_X, y0, panelX + panelWidth - SETTINGS_VIEW_PAD_X, y1);
-        for (int i = 0; i < settingsRows.size(); i++) {
-            int y = y0 + i * SETTINGS_ROW_H - settingsScroll;
-            if (y + SETTINGS_ROW_H < y0 || y > y1) continue;
-            boolean hovered = mouseX >= panelX + SETTINGS_VIEW_PAD_X && mouseX <= panelX + panelWidth - SETTINGS_VIEW_PAD_X && mouseY >= y && mouseY <= y + SETTINGS_ROW_H;
-            AuraBookSettingsModel.Row row = settingsRows.get(i);
-            int labelColor = row.style() == AuraBookSettingsModel.RowStyle.SECTION
-                    ? 0xFFE08A
-                    : (row.style() == AuraBookSettingsModel.RowStyle.MASTERY ? 0xFFD66B : (hovered ? 0xFFFF55 : 0xFFFFFF));
-            int stateColor = row.style() == AuraBookSettingsModel.RowStyle.INPUT ? 0xD8F0FF : 0x6AB2FF;
-            boolean bold = row.style() == AuraBookSettingsModel.RowStyle.SECTION || row.style() == AuraBookSettingsModel.RowStyle.MASTERY;
-
-            String label = row.style() == AuraBookSettingsModel.RowStyle.SECTION ? sectionLabel(row.label(), xRight - xLeft, scale) : row.label();
-            String state = settingsModel.stateText(row);
-            int labelY = y + 1;
-            drawScaledText(gg, label, xLeft, labelY, labelColor, scale, bold);
-            if (!state.isEmpty()) {
-                int stateW = (int) (font.width(state) * scale);
-                drawScaledText(gg, state, xRight - stateW, labelY, stateColor, scale);
-            }
-        }
-        gg.disableScissor();
-    }
-
-    private String sectionLabel(String label, int width, float scale) {
-        String out = label + " ";
-        while ((int) (font.width(out + "-") * scale) < width) {
-            out += "-";
-        }
-        return out;
     }
 
     private void drawScaledText(GuiGraphics gg, String text, int x, int y, int color, float scale) {

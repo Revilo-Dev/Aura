@@ -24,6 +24,7 @@ import net.revilodev.aura.skills.logic.SkillLogic;
 import java.util.Locale;
 
 @OnlyIn(Dist.CLIENT)
+// skill details panel
 public final class SkillDetailsPanel extends AbstractWidget {
     private static final float SMALL_TEXT_SCALE = 0.62F;
     private static final float HEADER_TEXT_SCALE = 0.62F;

@@ -15,6 +15,7 @@ public record AbilityDefinition(
         int baseCooldownTicks
 ) {
     public static AbilityDefinition fromId(AbilityId id) {
+        // builds ability definitions
         return new AbilityDefinition(id, id.title(), id.description(), id.iconTexture(), id.element(), id.specialization(), id.type(), id.required(), id.defaultMaxRank(), id.baseCooldownTicks());
     }
 

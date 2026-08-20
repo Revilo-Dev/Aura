@@ -10,6 +10,7 @@ import net.revilodev.aura.abilities.AbilitiesAttachments;
 import net.revilodev.aura.abilities.AbilityId;
 import net.revilodev.aura.abilities.PlayerAbilities;
 
+// ability combat events
 public final class AbilityCombatEvents {
     private AbilityCombatEvents() {}
 

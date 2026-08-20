@@ -5,8 +5,8 @@ import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.resources.ResourceLocation;
 import net.revilodev.aura.CodexMod;
 
+// three slice header
 public final class SkillPanelHeaderRenderer {
-    // three slice header
     private static final ResourceLocation HEADER_TEX =
             ResourceLocation.fromNamespaceAndPath(CodexMod.MOD_ID, "textures/gui/3-slice-header.png");
 

@@ -32,6 +32,7 @@ import java.util.Map;
 import java.util.Set;
 
 @OnlyIn(Dist.CLIENT)
+// ability keybinds
 public final class AbilityKeybinds {
     private static final String CATEGORY = "key.categories.aura";
     private static final Map<AbilityId, KeyMapping> KEYS = new EnumMap<>(AbilityId.class);

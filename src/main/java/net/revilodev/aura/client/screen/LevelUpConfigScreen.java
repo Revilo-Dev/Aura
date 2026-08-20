@@ -15,6 +15,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.function.IntConsumer;
 
+// level up config screen
 public final class LevelUpConfigScreen extends Screen {
     private final Screen parent;
     private final List<Row> rows = new ArrayList<>();

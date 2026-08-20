@@ -55,6 +55,7 @@ public enum SkillId {
     public int defaultMaxLevel() { return defaultMaxLevel; }
 
     public static SkillId byOrdinal(int ord) {
+        // resolves saved skill ids
         SkillId[] v = values();
         if (ord < 0 || ord >= v.length) return null;
         return v[ord];

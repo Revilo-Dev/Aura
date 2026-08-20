@@ -1,8 +1,10 @@
 package net.revilodev.aura.client;
 
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceLocation;
 import net.neoforged.fml.loading.FMLPaths;
 import net.revilodev.aura.abilities.AbilityElement;
+import net.revilodev.aura.abilities.AbilityConfig;
 import net.revilodev.aura.abilities.AbilityId;
 import net.revilodev.aura.skills.SkillCategory;
 import net.revilodev.aura.skills.SkillConfig;
@@ -17,6 +19,7 @@ import java.util.Locale;
 import java.util.function.IntConsumer;
 import java.util.function.Supplier;
 
+// aura book settings model
 public final class AuraBookSettingsModel {
     private final LevelUpConfigStore levelUpStore = new LevelUpConfigStore();
     private final List<Row> rows = new ArrayList<>();
@@ -30,19 +33,42 @@ public final class AuraBookSettingsModel {
     }
 
     public void rebuild() {
+        rebuild(SettingsCategory.UI);
+    }
+
+    public void rebuild(SettingsCategory category) {
         rows.clear();
-        rows.add(row(Component.translatable("gui.aura.settings.hud_display").getString(), () -> boolState(AuraClientConfig.hudDisplayEnabled()), button -> AuraClientConfig.toggleHudDisplayEnabled()));
-        rows.add(row(Component.translatable("gui.aura.settings.disable_inventory_book").getString(), () -> boolState(AuraClientConfig.disableInventoryCodexBook()), button -> AuraClientConfig.toggleDisableInventoryCodexBook()));
-        rows.add(row(Component.translatable("gui.aura.settings.spawn_with_book").getString(), () -> boolState(SkillConfig.spawnWithSkillsBook()), button -> SkillConfig.setSpawnWithSkillsBook(!SkillConfig.spawnWithSkillsBook())));
-        rows.add(row(Component.translatable("gui.aura.settings.reposition_hud").getString(), () -> Component.translatable("gui.aura.hud_position." + AuraClientConfig.hudPosition().name().toLowerCase(Locale.ROOT)).getString(), button -> AuraClientConfig.cycleHudPosition()));
-        rows.add(row(Component.translatable("gui.aura.settings.disable_skills_abilities").getString(), () -> boolState(AuraClientConfig.disableSkillsAndAbilities()), button -> AuraClientConfig.toggleDisableSkillsAndAbilities()));
-        rows.add(row(Component.translatable("gui.aura.settings.block_ability_switching").getString(), () -> boolState(AuraClientConfig.blockAbilitySwitching()), button -> AuraClientConfig.toggleBlockAbilitySwitching()));
-        rows.add(row(Component.translatable("gui.aura.settings.block_upgrade_downgrade").getString(), () -> boolState(AuraClientConfig.blockUpgradeDowngrade()), button -> AuraClientConfig.toggleBlockUpgradeDowngrade()));
-        rows.add(row(Component.translatable("gui.aura.settings.block_open_panel").getString(), () -> boolState(AuraClientConfig.blockOpenSkillsAbilitiesPanel()), button -> AuraClientConfig.toggleBlockOpenSkillsAbilitiesPanel()));
-        rows.add(row(Component.translatable("gui.aura.settings.levelup_values").getString(), () -> expandedState(levelUpExpanded), button -> toggleLevelUpExpanded()));
-        if (levelUpExpanded) addLevelUpRows();
-        rows.add(row(Component.translatable("gui.aura.settings.disabled_skills_abilities").getString(), () -> expandedState(disabledExpanded), button -> toggleDisabledExpanded()));
-        if (disabledExpanded) addDisabledRows();
+        editingRow = null;
+        editingValue = "";
+        switch (category) {
+            case UI -> {
+                rows.add(row(Component.translatable("gui.aura.settings.disable_inventory_book").getString(), () -> boolState(AuraClientConfig.disableInventoryCodexBook()), button -> AuraClientConfig.toggleDisableInventoryCodexBook()));
+                rows.add(row(Component.translatable("gui.aura.settings.block_open_panel").getString(), () -> boolState(AuraClientConfig.blockOpenSkillsAbilitiesPanel()), button -> AuraClientConfig.toggleBlockOpenSkillsAbilitiesPanel()));
+            }
+            case FEATURES -> {
+                rows.add(row(Component.translatable("gui.aura.settings.spawn_with_book").getString(), () -> boolState(SkillConfig.spawnWithSkillsBook()), button -> SkillConfig.setSpawnWithSkillsBook(!SkillConfig.spawnWithSkillsBook())));
+                rows.add(row(Component.translatable("gui.aura.settings.disable_skills_abilities").getString(), () -> boolState(AuraClientConfig.disableSkillsAndAbilities()), button -> AuraClientConfig.toggleDisableSkillsAndAbilities()));
+                rows.add(row(Component.translatable("gui.aura.settings.block_ability_switching").getString(), () -> boolState(AuraClientConfig.blockAbilitySwitching()), button -> AuraClientConfig.toggleBlockAbilitySwitching()));
+                rows.add(row(Component.translatable("gui.aura.settings.block_upgrade_downgrade").getString(), () -> boolState(AuraClientConfig.blockUpgradeDowngrade()), button -> AuraClientConfig.toggleBlockUpgradeDowngrade()));
+                rows.add(row(Component.translatable("gui.aura.settings.level_locks").getString(), () -> boolState(AbilityConfig.affinityLocksEnabled()), button -> AbilityConfig.setAffinityLocksEnabled(!AbilityConfig.affinityLocksEnabled())));
+                rows.add(row(Component.translatable("gui.aura.settings.ability_switch_cooldowns").getString(),
+                        () -> boolState(AbilityConfig.switchCooldownsEnabled()),
+                        button -> AbilityConfig.setSwitchCooldownsEnabled(!AbilityConfig.switchCooldownsEnabled())));
+                rows.add(input("gui.aura.settings.ability_switch_cooldown",
+                        () -> Integer.toString(AbilityConfig.survivalSwitchCooldownTicks() / 20),
+                        value -> AbilityConfig.setSurvivalSwitchCooldownTicks(parseInt(value,
+                                AbilityConfig.survivalSwitchCooldownTicks() / 20, 0, 3600) * 20)));
+            }
+            case STYLE -> {
+                rows.add(row(Component.translatable("gui.aura.settings.hud_display").getString(), () -> boolState(AuraClientConfig.hudDisplayEnabled()), button -> AuraClientConfig.toggleHudDisplayEnabled()));
+                rows.add(row(Component.translatable("gui.aura.settings.reposition_hud").getString(), () -> Component.translatable("gui.aura.hud_position." + AuraClientConfig.hudPosition().name().toLowerCase(Locale.ROOT)).getString(), button -> AuraClientConfig.cycleHudPosition()));
+            }
+            case LEVEL_UP -> {
+                loadLevelUpConfig();
+                addLevelUpRows();
+            }
+            case ABILITIES -> addDisabledRows();
+        }
     }
 
     public boolean clickRow(int index, int button) {
@@ -99,43 +125,30 @@ public final class AuraBookSettingsModel {
         }
     }
 
-    private void toggleLevelUpExpanded() {
-        if (!levelUpExpanded) loadLevelUpConfig();
-        levelUpExpanded = !levelUpExpanded;
-        editingRow = null;
-        rebuild();
-    }
-
-    private void toggleDisabledExpanded() {
-        disabledExpanded = !disabledExpanded;
-        editingRow = null;
-        rebuild();
-    }
-
     private void addDisabledRows() {
-        rows.add(section("gui.aura.disabled_skills_abilities.skills"));
+        rows.add(levelSection("gui.aura.disabled_skills_abilities.skills"));
         for (SkillCategory category : SkillCategory.values()) {
             rows.add(mastery(category.title(), () -> boolState(AuraClientConfig.skillMasteryEnabled(category)), button -> AuraClientConfig.toggleSkillMastery(category)));
             for (SkillId id : SkillId.values()) {
                 if (id.category() == category) {
-                    rows.add(row("  " + id.title(), () -> boolState(AuraClientConfig.skillEnabled(id)), button -> AuraClientConfig.toggleSkill(id)));
+                    rows.add(row(id.title(), id.icon(), () -> boolState(AuraClientConfig.skillEnabled(id)), button -> AuraClientConfig.toggleSkill(id)));
                 }
             }
         }
 
-        rows.add(section("gui.aura.disabled_skills_abilities.abilities"));
+        rows.add(levelSection("gui.aura.disabled_skills_abilities.abilities"));
         for (AbilityElement element : AbilityElement.values()) {
-            rows.add(mastery(title(element), () -> boolState(AuraClientConfig.abilityMasteryEnabled(element)), button -> AuraClientConfig.toggleAbilityMastery(element)));
+            rows.add(mastery(title(element), AbilityId.valueOf(element.name()).iconTexture(), () -> boolState(AuraClientConfig.abilityMasteryEnabled(element)), button -> AuraClientConfig.toggleAbilityMastery(element)));
             for (AbilityId id : AbilityId.values()) {
                 if (id.element() == element) {
-                    rows.add(row("  " + id.title(), () -> boolState(AuraClientConfig.abilityEnabled(id)), button -> AuraClientConfig.toggleAbility(id)));
+                    rows.add(row(id.title(), id.iconTexture(), () -> boolState(AuraClientConfig.abilityEnabled(id)), button -> AuraClientConfig.toggleAbility(id)));
                 }
             }
         }
     }
 
     private void addLevelUpRows() {
-        rows.add(section("gui.aura.levelup.section.client_hud"));
+        rows.add(levelSection("gui.aura.levelup.section.client_hud"));
         rows.add(levelUpBool("gui.aura.levelup.show_top_center_level_overlay", () -> levelUpStore.showTopCenterLevelOverlay, v -> levelUpStore.showTopCenterLevelOverlay = v));
         rows.add(levelUpBool("gui.aura.levelup.show_temporary_level_overlay", () -> levelUpStore.showTemporaryLevelOverlay, v -> levelUpStore.showTemporaryLevelOverlay = v));
         rows.add(levelUpBool("gui.aura.levelup.show_inventory_level_bar", () -> levelUpStore.showInventoryLevelBar, v -> levelUpStore.showInventoryLevelBar = v));
@@ -145,34 +158,42 @@ public final class AuraBookSettingsModel {
         }));
         rows.add(levelUpBool("gui.aura.levelup.level_hud_stay_on_screen", () -> levelUpStore.levelHudStayOnScreen, v -> levelUpStore.levelHudStayOnScreen = v));
         rows.add(input("gui.aura.levelup.level_hud_color", this::hudColor, value -> setHudColor(value)));
-        rows.add(input("gui.aura.levelup.hud_level_bar_offset_x", () -> Integer.toString(levelUpStore.hudLevelBarOffsetX), value -> levelUpStore.hudLevelBarOffsetX = parseInt(value, levelUpStore.hudLevelBarOffsetX, -500, 500)));
-        rows.add(input("gui.aura.levelup.hud_level_bar_offset_y", () -> Integer.toString(levelUpStore.hudLevelBarOffsetY), value -> levelUpStore.hudLevelBarOffsetY = parseInt(value, levelUpStore.hudLevelBarOffsetY, -500, 500)));
-        rows.add(input("gui.aura.levelup.inventory_level_bar_offset_x", () -> Integer.toString(levelUpStore.inventoryLevelBarOffsetX), value -> levelUpStore.inventoryLevelBarOffsetX = parseInt(value, levelUpStore.inventoryLevelBarOffsetX, -500, 500)));
-        rows.add(input("gui.aura.levelup.inventory_level_bar_offset_y", () -> Integer.toString(levelUpStore.inventoryLevelBarOffsetY), value -> levelUpStore.inventoryLevelBarOffsetY = parseInt(value, levelUpStore.inventoryLevelBarOffsetY, -500, 500)));
         rows.add(action("gui.aura.levelup.open_hud_reposition", this::openHudReposition));
         rows.add(action("gui.aura.levelup.open_inventory_reposition", this::openInventoryReposition));
-        rows.add(section("gui.aura.levelup.section.progression"));
+        rows.add(levelSection("gui.aura.levelup.section.progression"));
         rows.add(levelUpInt("gui.aura.levelup.base_xp_per_level", () -> levelUpStore.baseXpPerLevel, v -> levelUpStore.baseXpPerLevel = v, 1, 0, 1_000_000));
         rows.add(levelUpInt("gui.aura.levelup.linear_xp_per_level", () -> levelUpStore.linearXpPerLevel, v -> levelUpStore.linearXpPerLevel = v, 1, 0, 1_000_000));
         rows.add(levelUpDouble("gui.aura.levelup.exponent", () -> levelUpStore.exponent, v -> levelUpStore.exponent = v, 0.01D, 0.01D, 100.0D));
         rows.add(levelUpDouble("gui.aura.levelup.level_multiplier", () -> levelUpStore.levelMultiplier, v -> levelUpStore.levelMultiplier = v, 0.01D, 0.0D, 100.0D));
         rows.add(levelUpInt("gui.aura.levelup.max_level", () -> levelUpStore.maxLevel, v -> levelUpStore.maxLevel = v, 1, 1, 1_000_000));
-        rows.add(section("gui.aura.levelup.section.sources"));
+        rows.add(levelSection("gui.aura.levelup.section.sources"));
         rows.add(levelUpBool("gui.aura.levelup.enable_mob_kill_xp", () -> levelUpStore.enableMobKillXp, v -> levelUpStore.enableMobKillXp = v));
         rows.add(levelUpInt("gui.aura.levelup.mob_kill_xp", () -> levelUpStore.mobKillXp, v -> levelUpStore.mobKillXp = v, 1, 0, 1_000_000));
         rows.add(levelUpBool("gui.aura.levelup.drop_levels_only_from_mobs_with_tag", () -> levelUpStore.dropLevelsOnlyFromMobsWithTag, v -> levelUpStore.dropLevelsOnlyFromMobsWithTag = v));
     }
 
     private Row section(String key) {
-        return new Row(Component.translatable(key).getString(), () -> "", button -> {}, RowStyle.SECTION, null);
+        return new Row(Component.translatable(key).getString(), () -> "", button -> {}, RowStyle.SECTION, null, null);
+    }
+
+    private Row levelSection(String key) {
+        return new Row(Component.translatable(key).getString(), () -> "", button -> {}, RowStyle.PLAIN_SECTION, null, null);
     }
 
     private Row mastery(String label, Supplier<String> state, IntConsumer click) {
-        return new Row(label, state, click, RowStyle.MASTERY, null);
+        return mastery(label, null, state, click);
+    }
+
+    private Row mastery(String label, ResourceLocation icon, Supplier<String> state, IntConsumer click) {
+        return new Row(label, state, click, RowStyle.MASTERY, null, icon);
     }
 
     private Row row(String label, Supplier<String> state, IntConsumer click) {
-        return new Row(label, state, click, RowStyle.NORMAL, null);
+        return new Row(label, state, click, RowStyle.NORMAL, null, null);
+    }
+
+    private Row row(String label, ResourceLocation icon, Supplier<String> state, IntConsumer click) {
+        return new Row(label, state, click, RowStyle.NORMAL, null, icon);
     }
 
     private Row action(String key, Runnable action) {
@@ -182,7 +203,7 @@ public final class AuraBookSettingsModel {
     }
 
     private Row input(String key, Supplier<String> state, InputCommit commit) {
-        return new Row("  " + Component.translatable(key).getString(), state, button -> {}, RowStyle.INPUT, commit);
+        return new Row("  " + Component.translatable(key).getString(), state, button -> {}, RowStyle.INPUT, commit, null);
     }
 
     private Row levelUpBool(String key, BoolGetter getter, BoolSetter setter) {
@@ -447,10 +468,30 @@ public final class AuraBookSettingsModel {
         NORMAL,
         INPUT,
         SECTION,
+        PLAIN_SECTION,
         MASTERY
     }
 
-    public record Row(String label, Supplier<String> state, IntConsumer onClick, RowStyle style, InputCommit inputCommit) {}
+    public enum SettingsCategory {
+        UI("gui.aura.settings.category.ui"),
+        FEATURES("gui.aura.settings.category.features"),
+        STYLE("gui.aura.settings.category.style"),
+        LEVEL_UP("gui.aura.settings.category.levelup"),
+        ABILITIES("gui.aura.settings.category.abilities");
+
+        private final String titleKey;
+
+        SettingsCategory(String titleKey) {
+            this.titleKey = titleKey;
+        }
+
+        public Component title() {
+            return Component.translatable(titleKey);
+        }
+    }
+
+    public record Row(String label, Supplier<String> state, IntConsumer onClick, RowStyle style, InputCommit inputCommit,
+                      ResourceLocation icon) {}
 
     @FunctionalInterface
     public interface InputCommit { void accept(String value); }

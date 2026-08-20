@@ -4,6 +4,7 @@ public final class SkillBalance {
     private SkillBalance() {}
 
     public static double strengthDamage(int level) {
+        // calculates strength damage
         return level * SkillConfig.strengthDamagePerLevel();
     }
 

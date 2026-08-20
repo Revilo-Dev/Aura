@@ -20,6 +20,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 
+// skill logic
 public final class SkillLogic {
     private SkillLogic() {}
 

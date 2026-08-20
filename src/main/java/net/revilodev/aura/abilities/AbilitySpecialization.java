@@ -1,5 +1,6 @@
 package net.revilodev.aura.abilities;
 
+// ability specializations
 public enum AbilitySpecialization {
     CORE,
     BURST,

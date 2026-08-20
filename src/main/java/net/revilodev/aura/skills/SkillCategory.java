@@ -41,6 +41,7 @@ public enum SkillCategory {
     }
 
     public static SkillCategory byId(String id) {
+        // resolves configured category ids
         if (id == null) return STRENGTH;
         String s = id.toLowerCase(Locale.ROOT);
         for (SkillCategory c : values()) if (c.id.equals(s)) return c;

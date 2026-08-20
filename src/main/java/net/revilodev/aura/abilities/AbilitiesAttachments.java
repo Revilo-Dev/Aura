@@ -7,6 +7,7 @@ import net.revilodev.aura.CodexMod;
 
 import java.util.function.Supplier;
 
+// abilities attachments
 public final class AbilitiesAttachments {
     public static final DeferredRegister<AttachmentType<?>> REGISTER =
             DeferredRegister.create(NeoForgeRegistries.ATTACHMENT_TYPES, CodexMod.MOD_ID);

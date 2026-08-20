@@ -10,6 +10,7 @@ import net.revilodev.aura.abilities.AbilityId;
 import java.util.EnumMap;
 import java.util.Map;
 
+// codex stats
 public final class CodexStats {
     public static final ResourceLocation ABILITIES_USED = id("abilities_used");
     private static final Map<AbilityId, ResourceLocation> ABILITY_USE_STATS = new EnumMap<>(AbilityId.class);

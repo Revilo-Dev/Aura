@@ -57,10 +57,12 @@ configurations {
     runtimeClasspath.extendsFrom localRuntime
 }
 
+def levelUpJar = fileTree(dir: "runs/client/mods", include: ["levelup-*.jar"]).singleFile
+
 dependencies {
     implementation "net.neoforged:neoforge:${neo_version}"
-    compileOnly fileTree(dir: "runs/client/mods", include: ["levelup-*.jar"])
-    localRuntime fileTree(dir: "runs/client/mods", include: ["levelup-*.jar"])
+    compileOnly files(levelUpJar)
+    localRuntime files(levelUpJar)
 }
 
 // Replace properties inside neoforge.mods.toml with gradle.properties values

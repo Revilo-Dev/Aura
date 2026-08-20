@@ -20,6 +20,7 @@ import net.revilodev.aura.skills.SkillId;
 import java.util.EnumMap;
 import java.util.Map;
 
+// codex attributes
 public final class CodexAttributes {
     public static final DeferredRegister<Attribute> REGISTER = DeferredRegister.create(Registries.ATTRIBUTE, CodexMod.MOD_ID);
     public static final Holder<Attribute> ABILITY_POWER = REGISTER.register("ability_power",

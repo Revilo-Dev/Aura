@@ -6,6 +6,7 @@ import net.neoforged.fml.loading.FMLEnvironment;
 
 import java.lang.reflect.Method;
 
+// client runtime bridge
 public final class ClientRuntimeBridge {
     private static final String IMPL = "net.revilodev.aura.client.ClientRuntimeBridgeImpl";
 

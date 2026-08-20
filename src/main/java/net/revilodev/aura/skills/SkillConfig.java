@@ -30,6 +30,7 @@ public final class SkillConfig {
     private static final EnumMap<SkillId, ModConfigSpec.IntValue> MAX_LEVELS = new EnumMap<>(SkillId.class);
 
     static {
+        // builds skill configuration values
         ModConfigSpec.Builder builder = new ModConfigSpec.Builder();
         builder.push("progression");
         POINTS_PER_LEVEL = builder.defineInRange("skillPointsPerLevelUp", 1, 0, 10);
@@ -88,6 +89,7 @@ public final class SkillConfig {
     public static int fortuneBonusPerLevel() { return FORTUNE_BONUS_PER_LEVEL.get(); }
     public static boolean spawnWithSkillsBook() { return SPAWN_WITH_SKILLS_BOOK.get(); }
     public static void setSpawnWithSkillsBook(boolean value) {
+        // saves the starting book setting
         SPAWN_WITH_SKILLS_BOOK.set(value);
         SPEC.save();
     }

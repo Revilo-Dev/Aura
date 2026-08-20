@@ -1,5 +1,6 @@
 package net.revilodev.aura.skills;
 
+// skills events
 public final class SkillsEvents {
     private SkillsEvents() {}
 

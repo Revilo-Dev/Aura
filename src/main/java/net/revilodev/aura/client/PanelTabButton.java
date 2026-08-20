@@ -10,6 +10,7 @@ import net.neoforged.api.distmarker.OnlyIn;
 import net.revilodev.aura.CodexMod;
 
 @OnlyIn(Dist.CLIENT)
+// panel tab button
 public final class PanelTabButton extends AbstractButton {
     private static final ResourceLocation TAB =
             ResourceLocation.fromNamespaceAndPath(CodexMod.MOD_ID, "textures/gui/sprites/tab.png");

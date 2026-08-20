@@ -8,6 +8,7 @@ import net.neoforged.neoforge.registries.DeferredRegister;
 import net.neoforged.neoforge.registries.DeferredItem;
 import net.revilodev.aura.CodexMod;
 
+// mod items
 public final class ModItems {
     private ModItems() {}
 

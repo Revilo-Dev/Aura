@@ -44,11 +44,11 @@ public final class AbilityLogic {
     public static boolean tryActivate(ServerPlayer player, AbilityId id) {
         if (player == null || id == null || !id.isSpecialization()) return false;
         PlayerAbilities abilities = player.getData(AbilitiesAttachments.PLAYER_ABILITIES.get());
+        PlayerSkills skills = player.getData(SkillsAttachments.PLAYER_SKILLS.get());
         int effectiveRank = effectiveRank(player, abilities, id);
         int effectiveCoreRank = effectiveCoreRank(player, abilities, id);
-        if (!AbilityConfig.enabled(id) || effectiveCoreRank <= 0 || abilities.cooldownTicks(id) > 0) return false;
+        if (!AbilityConfig.enabled(id) || AbilityConfig.affinityLocked(abilities, id) || effectiveCoreRank <= 0 || abilities.cooldownTicks(id) > 0) return false;
 
-        PlayerSkills skills = player.getData(SkillsAttachments.PLAYER_SKILLS.get());
         double abilityPower = CodexAttributes.abilityPower(player, id);
         AbilityUseEvent.Pre preEvent = new AbilityUseEvent.Pre(player, id, effectiveRank, skills, abilityPower);
         if (NeoForge.EVENT_BUS.post(preEvent).isCanceled()) return false;
@@ -56,6 +56,9 @@ public final class AbilityLogic {
         int coreRank = Math.max(1, effectiveCoreRank);
         if (!execute(player, id, coreRank, preEvent.getAbilityPower())) return false;
         abilities.setCooldown(id, AbilityScaling.cooldownTicks(id, coreRank, skills));
+        if (player.gameMode.isSurvival() && AbilityConfig.switchCooldownsEnabled()) {
+            abilities.setSwitchCooldownTicks(id, AbilityConfig.survivalSwitchCooldownTicks());
+        }
         abilities.markUsed(id);
         player.awardStat(CodexStats.ABILITIES_USED);
         player.awardStat(CodexStats.abilityUse(id));

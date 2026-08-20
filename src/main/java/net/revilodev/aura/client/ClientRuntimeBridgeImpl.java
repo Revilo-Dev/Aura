@@ -8,6 +8,7 @@ import net.revilodev.aura.client.screen.StandaloneSkillsBookScreen;
 import net.revilodev.aura.client.toast.LevelUpToast;
 
 @OnlyIn(Dist.CLIENT)
+// client runtime bridge impl
 public final class ClientRuntimeBridgeImpl {
     private ClientRuntimeBridgeImpl() {}
 

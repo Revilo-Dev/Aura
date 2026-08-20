@@ -7,6 +7,7 @@ import net.revilodev.aura.CodexMod;
 
 import java.util.function.Supplier;
 
+// stores player skill data
 public final class SkillsAttachments {
     private SkillsAttachments() {}
 

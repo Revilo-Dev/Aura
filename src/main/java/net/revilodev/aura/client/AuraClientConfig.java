@@ -17,6 +17,7 @@ import java.nio.file.Path;
 import java.util.EnumSet;
 import java.util.Locale;
 
+// aura client config
 public final class AuraClientConfig {
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
     private static final Path FILE = FMLPaths.CONFIGDIR.get().resolve("aura-client.json");
@@ -36,6 +37,7 @@ public final class AuraClientConfig {
 
     private AuraClientConfig() {}
 
+    // loads saved client settings
     public static void load() {
         if (!Files.exists(FILE)) {
             save();
@@ -61,6 +63,7 @@ public final class AuraClientConfig {
         } catch (Exception ignored) {}
     }
 
+    // saves client settings
     public static void save() {
         try {
             Files.createDirectories(FILE.getParent());
@@ -112,6 +115,7 @@ public final class AuraClientConfig {
         return hudPosition;
     }
 
+    // cycles the hud position
     public static void cycleHudPosition() {
         hudPosition = switch (hudPosition) {
             case TOP_LEFT -> AbilityConfig.HudPosition.TOP_RIGHT;
@@ -158,6 +162,7 @@ public final class AuraClientConfig {
         save();
     }
 
+    // checks skill availability
     public static boolean skillEnabled(SkillId id) {
         return id != null && !disableSkillsAndAbilities && !disabledSkills.contains(id) && !disabledSkillMasteries.contains(id.category());
     }
@@ -174,6 +179,7 @@ public final class AuraClientConfig {
         toggle(disabledSkillMasteries, category);
     }
 
+    // checks ability availability
     public static boolean abilityEnabled(AbilityId id) {
         return id != null && !disableSkillsAndAbilities && !disabledAbilities.contains(id) && !disabledAbilityMasteries.contains(id.element());
     }
@@ -194,6 +200,7 @@ public final class AuraClientConfig {
         return root.has(key) ? root.get(key).getAsBoolean() : fallback;
     }
 
+    // toggles and saves disabled entries
     private static <E extends Enum<E>> void toggle(EnumSet<E> set, E value) {
         if (value == null) return;
         if (!set.remove(value)) set.add(value);
@@ -208,6 +215,7 @@ public final class AuraClientConfig {
         return out;
     }
 
+    // restores saved enum entries
     private static <E extends Enum<E>> void readEnumSet(JsonObject root, String key, Class<E> type, EnumSet<E> target) {
         target.clear();
         if (!root.has(key) || !root.get(key).isJsonArray()) return;

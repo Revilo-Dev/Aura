@@ -5,6 +5,7 @@ import net.neoforged.neoforge.common.ModConfigSpec;
 
 import java.util.EnumMap;
 
+// ability config
 public final class AbilityConfig {
     public static final ModConfigSpec SPEC;
 
@@ -19,12 +20,16 @@ public final class AbilityConfig {
     private static final ModConfigSpec.ConfigValue<String> HUD_POSITION;
     private static final ModConfigSpec.BooleanValue HUD_TIMER_TEXT;
     private static final ModConfigSpec.IntValue MAX_SLOTS;
+    private static final ModConfigSpec.IntValue SURVIVAL_SWITCH_COOLDOWN_TICKS;
+    private static final ModConfigSpec.BooleanValue ENABLE_SWITCH_COOLDOWNS;
+    private static final ModConfigSpec.BooleanValue ENABLE_AFFINITY_LOCKS;
     private static final EnumMap<AbilityId, ModConfigSpec.IntValue> MAX_RANKS = new EnumMap<>(AbilityId.class);
     private static final EnumMap<AbilityId, ModConfigSpec.BooleanValue> ENABLED = new EnumMap<>(AbilityId.class);
     private static final EnumMap<AbilityId, ModConfigSpec.IntValue> COOLDOWNS = new EnumMap<>(AbilityId.class);
     private static final EnumMap<AbilityId, ModConfigSpec.DoubleValue> DAMAGE = new EnumMap<>(AbilityId.class);
     private static final EnumMap<AbilityId, ModConfigSpec.DoubleValue> RADIUS = new EnumMap<>(AbilityId.class);
     private static final EnumMap<AbilityId, ModConfigSpec.IntValue> DURATION = new EnumMap<>(AbilityId.class);
+    private static final EnumMap<AbilityId, ModConfigSpec.IntValue> AFFINITY_LEVELS = new EnumMap<>(AbilityId.class);
     private static volatile boolean configLoaded = false;
 
     static {
@@ -48,6 +53,15 @@ public final class AbilityConfig {
         });
         HUD_TIMER_TEXT = builder.define("hudTimerText", true);
         MAX_SLOTS = builder.defineInRange("maxSlots", 5, 1, 5);
+        ENABLE_SWITCH_COOLDOWNS = builder.define("enableAbilitySwitchCooldowns", true);
+        SURVIVAL_SWITCH_COOLDOWN_TICKS = builder.defineInRange("survivalSwitchCooldownTicks", 1200, 0, 72000);
+        builder.pop();
+
+        builder.push("affinityLocks");
+        ENABLE_AFFINITY_LOCKS = builder.define("enabled", true);
+        for (AbilityId id : AbilityId.values()) {
+            AFFINITY_LEVELS.put(id, builder.defineInRange(id.name().toLowerCase(java.util.Locale.ROOT), defaultAffinityLevel(id), 0, 1_000_000));
+        }
         builder.pop();
 
         builder.push("abilities");
@@ -126,6 +140,51 @@ public final class AbilityConfig {
         return MAX_SLOTS.get();
     }
 
+    // reads the survival switch cooldown
+    public static int survivalSwitchCooldownTicks() {
+        return SURVIVAL_SWITCH_COOLDOWN_TICKS.get();
+    }
+
+    public static void setSurvivalSwitchCooldownTicks(int ticks) {
+        SURVIVAL_SWITCH_COOLDOWN_TICKS.set(Math.max(0, Math.min(72_000, ticks)));
+        SPEC.save();
+    }
+
+    public static boolean switchCooldownsEnabled() {
+        return !configLoaded || ENABLE_SWITCH_COOLDOWNS.get();
+    }
+
+    public static void setSwitchCooldownsEnabled(boolean enabled) {
+        ENABLE_SWITCH_COOLDOWNS.set(enabled);
+        SPEC.save();
+    }
+
+    // checks ability affinity locks
+    public static boolean affinityLocked(PlayerAbilities abilities, AbilityId id) {
+        return affinityLocksEnabled() && abilities != null && id != null && !id.isCore()
+                && abilities.rank(id.core()) < requiredAffinityLevel(id);
+    }
+
+    public static boolean affinityLocksEnabled() {
+        return !configLoaded || ENABLE_AFFINITY_LOCKS.get();
+    }
+
+    public static void setAffinityLocksEnabled(boolean enabled) {
+        ENABLE_AFFINITY_LOCKS.set(enabled);
+        SPEC.save();
+    }
+
+    public static int requiredAffinityLevel(AbilityId id) {
+        if (id == null || id.isCore()) return 0;
+        return switch (id) {
+            case FIRE_IMPLODE, ICE_IMPLODE, LIGHTNING_IMPLODE, POISON_IMPLODE, ICE_PIERCE, LIGHTNING_STRIKE -> 2;
+            case BLOOD_BURST -> 3;
+            case FIRE_STORM -> 4;
+            case FORCE_RAMPAGE, BLOOD_DRAIN -> 5;
+            default -> 1;
+        };
+    }
+
     public static int configuredCooldown(AbilityId id) {
         ModConfigSpec.IntValue value = COOLDOWNS.get(id);
         if (!configLoaded) return id == null ? 0 : id.baseCooldownTicks();
@@ -166,6 +225,16 @@ public final class AbilityConfig {
     public static int maxRank(AbilityId id) {
         ModConfigSpec.IntValue value = MAX_RANKS.get(id);
         return value != null ? value.get() : (id == null ? 1 : id.defaultMaxRank());
+    }
+
+    private static int defaultAffinityLevel(AbilityId id) {
+        return switch (id) {
+            case FIRE_IMPLODE, ICE_IMPLODE, LIGHTNING_IMPLODE, POISON_IMPLODE, ICE_PIERCE, LIGHTNING_STRIKE -> 2;
+            case BLOOD_BURST -> 3;
+            case ICE, LIGHTNING, FIRE_STORM -> 4;
+            case FORCE_RAMPAGE, BLOOD_DRAIN -> 5;
+            default -> id.isSpecialization() ? 1 : 0;
+        };
     }
 
     public enum HudPosition {

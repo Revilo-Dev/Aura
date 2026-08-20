@@ -5,6 +5,7 @@ import net.neoforged.bus.api.Event;
 import net.revilodev.aura.abilities.AbilityId;
 import org.jetbrains.annotations.Nullable;
 
+// ability power calculation event
 public class AbilityPowerCalculationEvent extends Event {
     private final ServerPlayer player;
     private final AbilityId abilityId;

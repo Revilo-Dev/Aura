@@ -9,6 +9,7 @@ import net.neoforged.neoforge.registries.DeferredRegister;
 import net.revilodev.aura.CodexMod;
 import net.revilodev.aura.entity.projectile.BurstCubeProjectile;
 
+// mod entities
 public final class ModEntities {
     private ModEntities() {}
 

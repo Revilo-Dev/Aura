@@ -6,6 +6,7 @@ import net.revilodev.aura.skills.PlayerSkills;
 
 import java.util.Locale;
 
+// ability scaling
 public final class AbilityScaling {
     private AbilityScaling() {}
 

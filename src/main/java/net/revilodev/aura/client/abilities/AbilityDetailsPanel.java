@@ -18,6 +18,7 @@ import net.revilodev.aura.abilities.AbilitiesAttachments;
 import net.revilodev.aura.abilities.AbilitiesNetwork;
 import net.revilodev.aura.abilities.AbilityDefinition;
 import net.revilodev.aura.abilities.AbilityId;
+import net.revilodev.aura.abilities.AbilityConfig;
 import net.revilodev.aura.abilities.AbilitySpecialization;
 import net.revilodev.aura.abilities.PlayerAbilities;
 import net.revilodev.aura.attributes.CodexAttributes;
@@ -29,6 +30,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 @OnlyIn(Dist.CLIENT)
+// ability details panel
 public final class AbilityDetailsPanel extends AbstractWidget {
     private static final float SMALL_TEXT_SCALE = 0.62F;
     private static final float HEADER_TEXT_SCALE = 0.62F;
@@ -130,11 +132,12 @@ public final class AbilityDetailsPanel extends AbstractWidget {
         PlayerAbilities abilities = mc.player.getData(AbilitiesAttachments.PLAYER_ABILITIES.get());
         PlayerSkills skills = mc.player.getData(SkillsAttachments.PLAYER_SKILLS.get());
         boolean editLocked = CodexAttributes.isAbilitySkillEditLocked(mc.player);
+        boolean affinityLocked = AbilityConfig.affinityLocked(abilities, ability.id());
         int level = abilities.rank(ability.id());
         int displayLevel = ability.type() == net.revilodev.aura.abilities.AbilityNodeType.SPECIALIZATION
                 ? abilities.rank(ability.id().core())
                 : level;
-        boolean canUp = !editLocked && !AuraClientConfig.blockUpgradeDowngrade() && abilities.canUpgrade(ability.id());
+        boolean canUp = !editLocked && !affinityLocked && !AuraClientConfig.blockUpgradeDowngrade() && abilities.canUpgrade(ability.id());
         boolean canDown = !editLocked && !AuraClientConfig.blockUpgradeDowngrade() && abilities.canDowngrade(ability.id());
         boolean specialization = ability.type() == net.revilodev.aura.abilities.AbilityNodeType.SPECIALIZATION;
 
@@ -189,7 +192,9 @@ public final class AbilityDetailsPanel extends AbstractWidget {
         upgrade.visible = !specialization;
         downgrade.visible = !specialization;
         select.visible = specialization;
-        select.active = specialization && !editLocked && !AuraClientConfig.blockAbilitySwitching();
+        select.active = specialization && !editLocked && !affinityLocked
+                && (!AbilityConfig.switchCooldownsEnabled() || abilities.switchCooldownTicks(ability.id()) <= 0)
+                && !AuraClientConfig.blockAbilitySwitching();
     }
 
     @Override

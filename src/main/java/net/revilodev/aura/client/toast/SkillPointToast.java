@@ -10,6 +10,7 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.revilodev.aura.skills.SkillCategory;
 
+// skill point toast
 public final class SkillPointToast implements Toast {
     private static final Object GLOBAL_TOKEN = new Object();
     private static final ResourceLocation TEXTURE = ResourceLocation.fromNamespaceAndPath("aura", "textures/gui/sprites/skill_toast.png");

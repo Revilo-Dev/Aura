@@ -8,6 +8,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.neoforged.neoforge.client.event.RenderGuiEvent;
 
+// level up toast
 public final class LevelUpToast {
     private static final ResourceLocation TEXTURE = ResourceLocation.fromNamespaceAndPath("aura", "textures/gui/sprites/skill_toast.png");
     private static final long DISPLAY_TIME_MS = 5000L;

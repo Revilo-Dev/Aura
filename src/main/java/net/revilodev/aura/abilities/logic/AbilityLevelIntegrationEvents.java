@@ -7,6 +7,7 @@ import net.revilodev.aura.abilities.AbilitiesAttachments;
 import net.revilodev.aura.abilities.AbilityConfig;
 import net.revilodev.aura.abilities.PlayerAbilities;
 
+// ability level integration events
 public final class AbilityLevelIntegrationEvents {
     private AbilityLevelIntegrationEvents() {}
 

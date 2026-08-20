@@ -26,11 +26,14 @@ import net.revilodev.aura.abilities.AbilityRegistry;
 import net.revilodev.aura.abilities.PlayerAbilities;
 import net.revilodev.aura.attributes.CodexAttributes;
 import net.revilodev.aura.client.AuraBookSettingsModel;
+import net.revilodev.aura.client.AuraSettingsView;
 import net.revilodev.aura.client.AuraClientConfig;
 import net.revilodev.aura.client.BottomPullTabButton;
 import net.revilodev.aura.client.PanelTab;
 import net.revilodev.aura.client.PanelTabButton;
+import net.revilodev.aura.client.SettingsBackTabButton;
 import net.revilodev.aura.client.SkillsToggleButton;
+import net.revilodev.aura.api.PanelStateChangedEvent;
 import net.revilodev.aura.client.abilities.AbilityKeybinds;
 import net.revilodev.aura.client.abilities.AbilityDetailsPanel;
 import net.revilodev.aura.client.abilities.AbilityListWidget;
@@ -42,6 +45,7 @@ import net.revilodev.aura.skills.SkillsAttachments;
 import com.revilo.levelup.api.LevelUpApi;
 
 import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -49,6 +53,7 @@ import java.util.WeakHashMap;
 import java.util.function.Supplier;
 
 @OnlyIn(Dist.CLIENT)
+// manages the skills panel
 public final class SkillsPanelClient {
     private static final ResourceLocation BTN_TEX =
             ResourceLocation.fromNamespaceAndPath(CodexMod.MOD_ID, "textures/gui/sprites/skills_button.png");
@@ -80,10 +85,6 @@ public final class SkillsPanelClient {
     private static final int INNER_PAD_BOTTOM = 6;
     private static final int HEADER_OFFSET_X = 5;
     private static final int HEADER_OFFSET_Y = 3;
-    private static final int SETTINGS_ROW_H = 7;
-    private static final int SETTINGS_VIEW_PAD_X = 6;
-    private static final int SETTINGS_VIEW_TOP = 18;
-    private static final int SETTINGS_VIEW_BOTTOM_PAD = 12;
     private static final int INVENTORY_BUTTON_X = 125;
     private static final int INVENTORY_BUTTON_X_WITH_BOUNDLESS = 145;
     private static final int INVENTORY_BUTTON_Y = 61;
@@ -117,7 +118,9 @@ public final class SkillsPanelClient {
         STATES.put(screen, st);
 
         st.btn = new SkillsToggleButton(inv.getGuiLeft() + inventoryButtonX(), inv.getGuiTop() + INVENTORY_BUTTON_Y, BTN_TEX, BTN_TEX_HOVER, () -> toggle(st));
-        st.bg = new PanelBackground(0, 0, PANEL_W, PANEL_H, () -> st.activeTab.title());
+        st.bg = new PanelBackground(0, 0, PANEL_W, PANEL_H, () -> st.viewMode == ViewMode.SETTINGS
+                ? st.settingsView.title().getString()
+                : (st.viewMode == ViewMode.PLAYER ? Component.translatable("gui.aura.player").getString() : st.activeTab.title()));
         st.skillsList = new SkillListWidget(0, 0, SkillListWidget.gridWidth(), SkillListWidget.preferredHeight(), def -> {
             st.skillsDetails.setSkill(def);
             st.skillsList.setSelected(def == null ? null : def.id());
@@ -137,7 +140,8 @@ public final class SkillsPanelClient {
         st.abilitiesTab = new PanelTabButton(0, 0, PanelTab.ABILITIES, () -> setTab(st, PanelTab.ABILITIES));
         st.playerBottomTab = new BottomPullTabButton(0, 0, Component.translatable("gui.aura.player"), PLAYER_TAB_TEX, PLAYER_TAB_TEX_PULLED, PLAYER_TAB_TEX_SELECTED, () -> setViewMode(st, ViewMode.PLAYER));
         st.settingsBottomTab = new BottomPullTabButton(0, 0, Component.translatable("gui.aura.settings"), SETTINGS_TAB_TEX, SETTINGS_TAB_TEX_PULLED, SETTINGS_TAB_TEX_PULLED_ALT, () -> setViewMode(st, ViewMode.SETTINGS));
-        initSettingsRows(st);
+        st.settingsView = new AuraSettingsView(new AuraBookSettingsModel());
+        st.backTab = new SettingsBackTabButton(0, 0, () -> setViewMode(st, ViewMode.MAIN));
 
         event.addListener(st.btn);
 
@@ -198,17 +202,21 @@ public final class SkillsPanelClient {
         st.abilitiesTab.render(event.getGuiGraphics(), event.getMouseX(), event.getMouseY(), event.getPartialTick());
         st.playerBottomTab.render(event.getGuiGraphics(), event.getMouseX(), event.getMouseY(), event.getPartialTick());
         st.settingsBottomTab.render(event.getGuiGraphics(), event.getMouseX(), event.getMouseY(), event.getPartialTick());
+        st.backTab.render(event.getGuiGraphics(), event.getMouseX(), event.getMouseY(), event.getPartialTick());
         if (st.activeTab == PanelTab.SKILLS) {
             st.skillsList.render(event.getGuiGraphics(), event.getMouseX(), event.getMouseY(), event.getPartialTick());
         } else {
             st.abilityList.render(event.getGuiGraphics(), event.getMouseX(), event.getMouseY(), event.getPartialTick());
         }
         if (st.viewMode == ViewMode.SETTINGS) {
-            renderSettingsRows(event.getGuiGraphics(), st, event.getMouseX(), event.getMouseY());
+            st.settingsView.render(event.getGuiGraphics(), st.bg.getX(), st.bg.getY(), event.getMouseX(), event.getMouseY());
         } else if (st.viewMode == ViewMode.PLAYER) {
             renderPlayerView(event.getGuiGraphics(), st, event.getMouseX(), event.getMouseY());
         }
         renderPointsBadge(event.getGuiGraphics(), st, inv);
+        if (st.viewMode == ViewMode.SETTINGS) {
+            st.settingsView.renderTooltip(event.getGuiGraphics(), event.getMouseX(), event.getMouseY());
+        }
         event.getGuiGraphics().pose().popPose();
     }
 
@@ -217,10 +225,7 @@ public final class SkillsPanelClient {
         State st = STATES.get(event.getScreen());
         if (st == null || !st.open) return;
         if (st.viewMode == ViewMode.SETTINGS) {
-            if (!isInSettingsView(st, event.getMouseX(), event.getMouseY())) return;
-            int maxScroll = Math.max(0, st.settingsRows.size() * SETTINGS_ROW_H - settingsViewHeight());
-            st.settingsScroll = Math.max(0, Math.min(maxScroll, st.settingsScroll - (int) Math.signum(event.getScrollDeltaY()) * 14));
-            event.setCanceled(true);
+            if (st.settingsView.mouseScrolled(st.bg.getX(), st.bg.getY(), event.getMouseX(), event.getMouseY(), event.getScrollDeltaY())) event.setCanceled(true);
             return;
         }
         if (st.viewMode != ViewMode.MAIN) return;
@@ -240,6 +245,11 @@ public final class SkillsPanelClient {
     public static void onMouseDragged(ScreenEvent.MouseDragged.Pre event) {
         if (AuraClientConfig.disableInventoryCodexBook() || AuraClientConfig.blockOpenSkillsAbilitiesPanel()) return;
         State st = STATES.get(event.getScreen());
+        if (st != null && st.open && st.viewMode == ViewMode.SETTINGS
+                && st.settingsView.mouseDragged(st.bg.getY(), event.getMouseY(), event.getMouseButton())) {
+            event.setCanceled(true);
+            return;
+        }
         if (st == null || !st.open || st.viewMode != ViewMode.MAIN || st.activeTab != PanelTab.ABILITIES) return;
         if (st.abilityList.mouseDragged(event.getMouseX(), event.getMouseY(), event.getMouseButton(), event.getDragX(), event.getDragY())) {
             event.setCanceled(true);
@@ -250,6 +260,10 @@ public final class SkillsPanelClient {
         if (AuraClientConfig.disableInventoryCodexBook() || AuraClientConfig.blockOpenSkillsAbilitiesPanel()) return;
         State st = STATES.get(event.getScreen());
         if (st == null || !st.open) return;
+        if (st.viewMode == ViewMode.SETTINGS && st.settingsView.mouseReleased(event.getButton())) {
+            event.setCanceled(true);
+            return;
+        }
         st.abilityList.endDrag();
     }
 
@@ -281,13 +295,13 @@ public final class SkillsPanelClient {
             event.setCanceled(true);
             return;
         }
+        if (event.getButton() == 0 && st.backTab.visible && st.backTab.active && st.backTab.isMouseOver(mouseX, mouseY)) {
+            st.backTab.onPress();
+            event.setCanceled(true);
+            return;
+        }
         if (st.viewMode == ViewMode.SETTINGS) {
-            if ((event.getButton() == 0 || event.getButton() == 1) && isInSettingsView(st, mouseX, mouseY)) {
-                int index = (int) ((mouseY - settingsViewY(st) + st.settingsScroll) / SETTINGS_ROW_H);
-                if (index >= 0 && index < st.settingsRows.size()) {
-                    st.settingsModel.clickRow(index, event.getButton());
-                }
-            }
+            if (st.settingsView.mouseClicked(st.bg.getX(), st.bg.getY(), mouseX, mouseY, event.getButton())) event.setCanceled(true);
             if (isInsideOverlay(st, mouseX, mouseY)) event.setCanceled(true);
             return;
         }
@@ -314,7 +328,7 @@ public final class SkillsPanelClient {
         if (AuraClientConfig.disableInventoryCodexBook() || AuraClientConfig.blockOpenSkillsAbilitiesPanel()) return;
         State st = STATES.get(event.getScreen());
         if (st == null || !st.open || st.viewMode != ViewMode.SETTINGS) return;
-        if (st.settingsModel.keyPressed(event.getKeyCode())) {
+        if (st.settingsView.keyPressed(event.getKeyCode())) {
             event.setCanceled(true);
         }
     }
@@ -323,7 +337,7 @@ public final class SkillsPanelClient {
         if (AuraClientConfig.disableInventoryCodexBook() || AuraClientConfig.blockOpenSkillsAbilitiesPanel()) return;
         State st = STATES.get(event.getScreen());
         if (st == null || !st.open || st.viewMode != ViewMode.SETTINGS) return;
-        if (st.settingsModel.charTyped(event.getCodePoint())) {
+        if (st.settingsView.charTyped(event.getCodePoint())) {
             event.setCanceled(true);
         }
     }
@@ -338,6 +352,10 @@ public final class SkillsPanelClient {
     }
 
     private static void openAuraPanel(State st) {
+        NeoForge.EVENT_BUS.post(new PanelStateChangedEvent(
+                ResourceLocation.fromNamespaceAndPath(CodexMod.MOD_ID, "inventory_panel"), true
+        ));
+        closeBoundlessPanelFallback();
         if (st.recipeBtn == null) st.recipeBtn = findRecipeButton(st.inv);
         if (st.recipeBtn != null && isRecipePanelOpen(st.inv)) {
             st.recipeBtn.onPress();
@@ -364,6 +382,15 @@ public final class SkillsPanelClient {
         applySkillsVsRecipePanelRule(st.inv, st);
     }
 
+    private static void closeBoundlessPanelFallback() {
+        if (!ModList.get().isLoaded("boundless")) return;
+        try {
+            Class<?> panelClass = Class.forName("net.revilodev.boundless.client.QuestPanelClient");
+            panelClass.getMethod("closeAllOpenPanels").invoke(null);
+        } catch (ReflectiveOperationException ignored) {
+        }
+    }
+
     private static void setTab(State st, PanelTab tab) {
         st.activeTab = tab;
         lastTab = tab;
@@ -373,9 +400,6 @@ public final class SkillsPanelClient {
 
     private static void setViewMode(State st, ViewMode viewMode) {
         st.viewMode = viewMode;
-        if (viewMode == ViewMode.SETTINGS) {
-            st.settingsScroll = Math.max(0, st.settingsScroll);
-        }
         updateVisibility(st);
     }
 
@@ -449,6 +473,7 @@ public final class SkillsPanelClient {
         st.abilitiesTab.setPosition(bgx - 31, bgy + 34);
         st.playerBottomTab.setPosition(bgx + 4, bgy + PANEL_H - 3);
         st.settingsBottomTab.setPosition(bgx + 4 + 32 + 2, bgy + PANEL_H - 3);
+        st.backTab.setPosition(bgx - 25, bgy + 143);
     }
 
     private static int inventoryButtonX() {
@@ -492,18 +517,20 @@ public final class SkillsPanelClient {
 
         st.bg.visible = st.open;
         st.bg.active = st.open;
-        st.skillsTab.visible = st.open;
-        st.skillsTab.active = st.open;
+        st.skillsTab.visible = st.open && main;
+        st.skillsTab.active = st.open && main;
         st.skillsTab.setSelected(main && st.activeTab == PanelTab.SKILLS);
-        st.abilitiesTab.visible = st.open;
-        st.abilitiesTab.active = st.open;
+        st.abilitiesTab.visible = st.open && main;
+        st.abilitiesTab.active = st.open && main;
         st.abilitiesTab.setSelected(main && st.activeTab == PanelTab.ABILITIES);
-        st.playerBottomTab.visible = st.open;
-        st.playerBottomTab.active = st.open;
+        st.playerBottomTab.visible = st.open && main;
+        st.playerBottomTab.active = st.open && main;
         st.playerBottomTab.setSelected(st.viewMode == ViewMode.PLAYER);
-        st.settingsBottomTab.visible = st.open;
-        st.settingsBottomTab.active = st.open;
+        st.settingsBottomTab.visible = st.open && main;
+        st.settingsBottomTab.active = st.open && main;
         st.settingsBottomTab.setSelected(st.viewMode == ViewMode.SETTINGS);
+        st.backTab.visible = st.open && !main;
+        st.backTab.active = st.open && !main;
 
         st.skillsList.visible = skillsActive;
         st.skillsList.active = skillsActive;
@@ -566,66 +593,6 @@ public final class SkillsPanelClient {
         int bottom = top + PANEL_H;
         int tabLeft = left - 31;
         return mouseX >= tabLeft && mouseX <= right && mouseY >= top && mouseY <= bottom;
-    }
-
-    private static void initSettingsRows(State st) {
-        st.settingsModel.rebuild();
-        st.settingsRows = st.settingsModel.rows();
-    }
-
-    private static int settingsViewY(State st) {
-        return st.bg.getY() + SETTINGS_VIEW_TOP;
-    }
-
-    private static int settingsViewHeight() {
-        return PANEL_H - SETTINGS_VIEW_TOP - SETTINGS_VIEW_BOTTOM_PAD;
-    }
-
-    private static boolean isInSettingsView(State st, double mouseX, double mouseY) {
-        int x0 = st.bg.getX() + SETTINGS_VIEW_PAD_X;
-        int x1 = st.bg.getX() + PANEL_W - SETTINGS_VIEW_PAD_X;
-        int y0 = settingsViewY(st);
-        int y1 = y0 + settingsViewHeight();
-        return mouseX >= x0 && mouseX <= x1 && mouseY >= y0 && mouseY <= y1;
-    }
-
-    private static void renderSettingsRows(GuiGraphics gg, State st, int mouseX, int mouseY) {
-        var mc = net.minecraft.client.Minecraft.getInstance();
-        int xLeft = st.bg.getX() + SETTINGS_VIEW_PAD_X + 7;
-        int xRight = st.bg.getX() + PANEL_W - SETTINGS_VIEW_PAD_X - 7;
-        int y0 = settingsViewY(st);
-        int y1 = y0 + settingsViewHeight();
-        float scale = 0.5F;
-
-        gg.enableScissor(st.bg.getX() + SETTINGS_VIEW_PAD_X, y0, st.bg.getX() + PANEL_W - SETTINGS_VIEW_PAD_X, y1);
-        for (int i = 0; i < st.settingsRows.size(); i++) {
-            int y = y0 + i * SETTINGS_ROW_H - st.settingsScroll;
-            if (y + SETTINGS_ROW_H < y0 || y > y1) continue;
-            boolean hovered = mouseX >= st.bg.getX() + SETTINGS_VIEW_PAD_X && mouseX <= st.bg.getX() + PANEL_W - SETTINGS_VIEW_PAD_X && mouseY >= y && mouseY <= y + SETTINGS_ROW_H;
-            AuraBookSettingsModel.Row row = st.settingsRows.get(i);
-            int labelColor = row.style() == AuraBookSettingsModel.RowStyle.SECTION
-                    ? 0xFFE08A
-                    : (row.style() == AuraBookSettingsModel.RowStyle.MASTERY ? 0xFFD66B : (hovered ? 0xFFFF55 : 0xFFFFFF));
-            int stateColor = row.style() == AuraBookSettingsModel.RowStyle.INPUT ? 0xD8F0FF : 0x6AB2FF;
-            boolean bold = row.style() == AuraBookSettingsModel.RowStyle.SECTION || row.style() == AuraBookSettingsModel.RowStyle.MASTERY;
-            String label = row.style() == AuraBookSettingsModel.RowStyle.SECTION ? sectionLabel(mc, row.label(), xRight - xLeft, scale) : row.label();
-            String state = st.settingsModel.stateText(row);
-            int labelY = y + 1;
-            drawScaledText(gg, mc, label, xLeft, labelY, labelColor, scale, bold);
-            if (!state.isEmpty()) {
-                int stateW = (int) (mc.font.width(state) * scale);
-                drawScaledText(gg, mc, state, xRight - stateW, labelY, stateColor, scale);
-            }
-        }
-        gg.disableScissor();
-    }
-
-    private static String sectionLabel(net.minecraft.client.Minecraft mc, String label, int width, float scale) {
-        String out = label + " ";
-        while ((int) (mc.font.width(out + "-") * scale) < width) {
-            out += "-";
-        }
-        return out;
     }
 
     private static void drawScaledText(GuiGraphics gg, net.minecraft.client.Minecraft mc, String text, int x, int y, int color, float scale) {
@@ -819,10 +786,9 @@ public final class SkillsPanelClient {
         PanelTab activeTab = PanelTab.SKILLS;
         BottomPullTabButton playerBottomTab;
         BottomPullTabButton settingsBottomTab;
+        SettingsBackTabButton backTab;
         ViewMode viewMode = ViewMode.MAIN;
-        final AuraBookSettingsModel settingsModel = new AuraBookSettingsModel();
-        List<AuraBookSettingsModel.Row> settingsRows = new ArrayList<>();
-        int settingsScroll = 0;
+        AuraSettingsView settingsView;
 
         State(InventoryScreen inv) {
             this.inv = inv;

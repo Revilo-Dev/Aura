@@ -14,6 +14,7 @@ import net.revilodev.aura.skills.SkillsAttachments;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
+// ability sync events
 public final class AbilitySyncEvents {
     private static final java.util.Set<UUID> PENDING = ConcurrentHashMap.newKeySet();
 

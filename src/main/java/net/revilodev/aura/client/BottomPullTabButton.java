@@ -9,6 +9,7 @@ import net.neoforged.api.distmarker.Dist;
 import net.neoforged.api.distmarker.OnlyIn;
 
 @OnlyIn(Dist.CLIENT)
+// bottom pull tab button
 public final class BottomPullTabButton extends AbstractButton {
     private static final int TAB_WIDTH = 32;
     private static final int NORMAL_HEIGHT = 32;
@@ -40,6 +41,7 @@ public final class BottomPullTabButton extends AbstractButton {
     protected void renderWidget(GuiGraphics gg, int mouseX, int mouseY, float partialTick) {
         ResourceLocation texture = baseTexture;
         int texH = NORMAL_HEIGHT;
+        int drawX = getX();
         if (selected && selectedTexture != null) {
             texture = selectedTexture;
             texH = SELECTED_HEIGHT;
@@ -48,7 +50,7 @@ public final class BottomPullTabButton extends AbstractButton {
         }
         int drawY = getY() - Math.max(0, texH - NORMAL_HEIGHT);
         int drawH = texH;
-        gg.blit(texture, getX(), drawY, 0, 0, width, drawH, width, texH);
+        gg.blit(texture, drawX, drawY, 0, 0, width, drawH, width, texH);
     }
 
     @Override

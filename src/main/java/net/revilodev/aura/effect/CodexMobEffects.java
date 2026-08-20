@@ -12,6 +12,7 @@ import net.revilodev.aura.CodexMod;
 import net.revilodev.aura.attributes.CodexAttributes;
 
 public final class CodexMobEffects {
+    //  ability player status effects
     public static final DeferredRegister<MobEffect> REGISTER = DeferredRegister.create(Registries.MOB_EFFECT, CodexMod.MOD_ID);
     public static final Holder<MobEffect> ABILITY_POWER_BOOST = REGISTER.register("ability_power_boost", () ->
             new AbilityPowerBoostEffect()
@@ -23,6 +24,7 @@ public final class CodexMobEffects {
                                 case 1 -> 0.50D;
                                 default -> 1.0D;
                             }));
+    // raging effect functionality: vanilla attack damage and speed effects
     public static final Holder<MobEffect> RAMPAGING = REGISTER.register("rampaging", () ->
             new RampagingEffect()
                     .addAttributeModifier(Attributes.ATTACK_DAMAGE,
@@ -44,6 +46,7 @@ public final class CodexMobEffects {
 
     private CodexMobEffects() {}
 
+    // registers mob effects
     public static void register(IEventBus modBus) {
         REGISTER.register(modBus);
     }

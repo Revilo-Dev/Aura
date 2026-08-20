@@ -14,6 +14,7 @@ public abstract class AbilityUseEvent extends Event {
     private final double abilityPower;
 
     protected AbilityUseEvent(ServerPlayer player, AbilityId abilityId, int rank, PlayerSkills skills, double abilityPower) {
+        // passes ability use details
         this.player = player;
         this.abilityId = abilityId;
         this.rank = rank;

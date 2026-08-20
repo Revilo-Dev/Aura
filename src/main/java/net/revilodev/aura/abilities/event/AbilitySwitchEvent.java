@@ -13,6 +13,7 @@ public abstract class AbilitySwitchEvent extends Event {
     private final AbilityId toAbility;
 
     protected AbilitySwitchEvent(ServerPlayer player, AbilityElement element, AbilityId fromAbility, AbilityId toAbility) {
+        // passes ability switch details
         this.player = player;
         this.element = element;
         this.fromAbility = fromAbility;

@@ -4,6 +4,7 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.network.chat.Component;
 import net.revilodev.aura.skills.SkillId;
 
+// ability id
 public enum AbilityId {
     FIRE(AbilityElement.FIRE, null, AbilityNodeType.CORE, null, SkillId.STRENGTH, 6, 0, "fire"),
     FIRE_NOVA(AbilityElement.FIRE, AbilitySpecialization.NOVA, AbilityNodeType.SPECIALIZATION, FIRE, SkillId.STRENGTH, 1, 200, "fire_nova"),

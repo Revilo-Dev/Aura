@@ -15,6 +15,7 @@ import net.revilodev.aura.abilities.AbilityElement;
 import net.revilodev.aura.abilities.logic.AbilityLogic;
 import net.revilodev.aura.entity.ModEntities;
 
+// burst cube projectile
 public final class BurstCubeProjectile extends ThrowableProjectile {
     private static final EntityDataAccessor<Integer> ELEMENT = SynchedEntityData.defineId(BurstCubeProjectile.class, EntityDataSerializers.INT);
     private static final EntityDataAccessor<Float> DAMAGE = SynchedEntityData.defineId(BurstCubeProjectile.class, EntityDataSerializers.FLOAT);

@@ -1,11 +1,13 @@
 package net.revilodev.aura.abilities.command;
 
 import com.mojang.brigadier.CommandDispatcher;
+import com.mojang.brigadier.context.CommandContext;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.suggestion.SuggestionProvider;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
+import net.minecraft.commands.arguments.EntityArgument;
 import net.minecraft.commands.SharedSuggestionProvider;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
@@ -17,6 +19,7 @@ import net.revilodev.aura.abilities.AbilityId;
 import net.revilodev.aura.abilities.PlayerAbilities;
 
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Locale;
 
 public final class AbilitiesCommands {
@@ -39,35 +42,20 @@ public final class AbilitiesCommands {
         root.then(Commands.literal("points")
                 .then(Commands.literal("add")
                         .then(Commands.argument("amount", IntegerArgumentType.integer(1))
-                                .executes(ctx -> {
-                                    ServerPlayer player = ctx.getSource().getPlayerOrException();
-                                    int amount = IntegerArgumentType.getInteger(ctx, "amount");
-                                    PlayerAbilities data = player.getData(AbilitiesAttachments.PLAYER_ABILITIES.get());
-                                    data.addPoints(amount);
-                                    AbilitiesNetwork.syncTo(player);
-                                    ctx.getSource().sendSuccess(() -> Component.translatable("command.aura.abilities.points_add.success", amount), true);
-                                    return 1;
-                                })))
+                                .executes(ctx -> addPoints(ctx, java.util.List.of(ctx.getSource().getPlayerOrException()), IntegerArgumentType.getInteger(ctx, "amount"))))
+                        .then(Commands.argument("targets", EntityArgument.players())
+                                .then(Commands.argument("amount", IntegerArgumentType.integer(1))
+                                        .executes(ctx -> addPoints(ctx, EntityArgument.getPlayers(ctx, "targets"), IntegerArgumentType.getInteger(ctx, "amount"))))))
                 .then(Commands.literal("set")
                         .then(Commands.argument("amount", IntegerArgumentType.integer(0))
-                                .executes(ctx -> {
-                                    ServerPlayer player = ctx.getSource().getPlayerOrException();
-                                    int amount = IntegerArgumentType.getInteger(ctx, "amount");
-                                    PlayerAbilities data = player.getData(AbilitiesAttachments.PLAYER_ABILITIES.get());
-                                    data.setPoints(amount);
-                                    AbilitiesNetwork.syncTo(player);
-                                    ctx.getSource().sendSuccess(() -> Component.translatable("command.aura.abilities.points_set.success", amount), true);
-                                    return 1;
-                                })))
+                                .executes(ctx -> setPoints(ctx, java.util.List.of(ctx.getSource().getPlayerOrException()), IntegerArgumentType.getInteger(ctx, "amount"))))
+                        .then(Commands.argument("targets", EntityArgument.players())
+                                .then(Commands.argument("amount", IntegerArgumentType.integer(0))
+                                        .executes(ctx -> setPoints(ctx, EntityArgument.getPlayers(ctx, "targets"), IntegerArgumentType.getInteger(ctx, "amount"))))))
                 .then(Commands.literal("reset")
-                        .executes(ctx -> {
-                            ServerPlayer player = ctx.getSource().getPlayerOrException();
-                            PlayerAbilities data = player.getData(AbilitiesAttachments.PLAYER_ABILITIES.get());
-                            data.setPoints(0);
-                            AbilitiesNetwork.syncTo(player);
-                            ctx.getSource().sendSuccess(() -> Component.translatable("command.aura.abilities.points_reset.success"), true);
-                            return 1;
-                        })));
+                        .executes(ctx -> resetPoints(ctx, java.util.List.of(ctx.getSource().getPlayerOrException())))
+                        .then(Commands.argument("targets", EntityArgument.players())
+                                .executes(ctx -> resetPoints(ctx, EntityArgument.getPlayers(ctx, "targets"))))));
 
         root.then(Commands.literal("unlock")
                 .then(Commands.argument("ability", StringArgumentType.word()).suggests(SUGGEST_ABILITIES)
@@ -96,6 +84,36 @@ public final class AbilitiesCommands {
                 }));
 
         dispatcher.register(root);
+    }
+
+    // updates and syncs ability points
+    private static int addPoints(CommandContext<CommandSourceStack> ctx, Collection<ServerPlayer> players, int amount) {
+        for (ServerPlayer player : players) {
+            player.getData(AbilitiesAttachments.PLAYER_ABILITIES.get()).addPoints(amount);
+            AbilitiesNetwork.syncTo(player);
+            ctx.getSource().sendSuccess(() -> Component.translatable("command.aura.abilities.points_add.success", amount, player.getDisplayName()), true);
+        }
+        return players.size();
+    }
+
+    // updates and syncs ability points
+    private static int setPoints(CommandContext<CommandSourceStack> ctx, Collection<ServerPlayer> players, int amount) {
+        for (ServerPlayer player : players) {
+            player.getData(AbilitiesAttachments.PLAYER_ABILITIES.get()).setPoints(amount);
+            AbilitiesNetwork.syncTo(player);
+            ctx.getSource().sendSuccess(() -> Component.translatable("command.aura.abilities.points_set.success", player.getDisplayName(), amount), true);
+        }
+        return players.size();
+    }
+
+    // clears and syncs ability points
+    private static int resetPoints(CommandContext<CommandSourceStack> ctx, Collection<ServerPlayer> players) {
+        for (ServerPlayer player : players) {
+            player.getData(AbilitiesAttachments.PLAYER_ABILITIES.get()).setPoints(0);
+            AbilitiesNetwork.syncTo(player);
+            ctx.getSource().sendSuccess(() -> Component.translatable("command.aura.abilities.points_reset.success", player.getDisplayName()), true);
+        }
+        return players.size();
     }
 
     private static AbilityId parseAbility(String value) {

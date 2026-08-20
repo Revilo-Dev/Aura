@@ -9,6 +9,7 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.revilodev.aura.skills.SkillsNetwork;
 
+// skills book item
 public final class SkillsBookItem extends Item {
 
     public SkillsBookItem(Properties props) {

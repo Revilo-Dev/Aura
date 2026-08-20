@@ -12,6 +12,7 @@ import net.neoforged.neoforge.event.brewing.RegisterBrewingRecipesEvent;
 import net.neoforged.neoforge.registries.DeferredRegister;
 import net.revilodev.aura.CodexMod;
 
+// codex potions
 public final class CodexPotions {
     public static final DeferredRegister<Potion> REGISTER = DeferredRegister.create(Registries.POTION, CodexMod.MOD_ID);
     public static final Holder<Potion> ABILITY_POWER = REGISTER.register("ability_power",

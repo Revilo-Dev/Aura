@@ -17,6 +17,7 @@ import net.revilodev.aura.abilities.AbilitiesAttachments;
 import net.revilodev.aura.abilities.AbilitiesNetwork;
 import net.revilodev.aura.abilities.AbilityElement;
 import net.revilodev.aura.abilities.AbilityDefinition;
+import net.revilodev.aura.abilities.AbilityConfig;
 import net.revilodev.aura.abilities.AbilityId;
 import net.revilodev.aura.abilities.AbilityRegistry;
 import net.revilodev.aura.abilities.AbilitySpecialization;
@@ -53,6 +54,8 @@ public final class AbilityListWidget extends AbstractWidget {
             ResourceLocation.fromNamespaceAndPath(CodexMod.MOD_ID, "textures/gui/sprites/link-disabled.png");
     private static final ResourceLocation ABILITY_ORB_TEX =
             ResourceLocation.fromNamespaceAndPath(CodexMod.MOD_ID, "textures/gui/icon/ability_orb.png");
+    private static final ResourceLocation LOCKED_TEX =
+            ResourceLocation.fromNamespaceAndPath(CodexMod.MOD_ID, "textures/gui/icon/locked.png");
 
     private static final int HEADER_HEIGHT = 11;
     private static final int CELL_SIZE = 23;
@@ -202,7 +205,7 @@ public final class AbilityListWidget extends AbstractWidget {
 
         // header points
         if (headerVisible) {
-            int textX = getX() + 1 + headerTextOffsetX;
+            int textX = getX() + VIEWPORT_OFFSET_X + 10 + headerTextOffsetX;
             int textY = getY() + 4;
             drawScaledIcon(gg, ABILITY_ORB_TEX, textX - 10, textY - 1, 8);
             drawScaledText(gg, Component.translatable("gui.aura.points.ability", abilities.points()).getString(), textX, textY, 0xC78CFF, 0.85F);
@@ -248,9 +251,11 @@ public final class AbilityListWidget extends AbstractWidget {
             boolean specialization = def.type() == net.revilodev.aura.abilities.AbilityNodeType.SPECIALIZATION;
             boolean isSelectedSpecialization = specialization && def.id() == selectedSpec;
             boolean configEnabled = AuraClientConfig.abilityEnabled(def.id());
+            boolean affinityLocked = AbilityConfig.affinityLocked(abilities, def.id());
+            int switchCooldown = abilities.switchCooldownTicks(def.id());
 
             ResourceLocation tex;
-            if (!configEnabled) {
+            if (!configEnabled || affinityLocked) {
                 tex = hovered ? WIDGET_DISABLED_HOVER_TEX : WIDGET_DISABLED_TEX;
             } else if (primary && !unlocked) {
                 tex = WIDGET_PRIMARY_DISABLED_TEX;
@@ -268,6 +273,16 @@ public final class AbilityListWidget extends AbstractWidget {
             }
             drawScaledTile(gg, tex, x, y, CELL_SIZE, CELL_SIZE);
             gg.blit(def.iconTexture(), x + 3, y + 3, 0, 0, 16, 16, 16, 16);
+            if (affinityLocked) {
+                gg.blit(LOCKED_TEX, x + 3, y + 3, 0, 0, 16, 16, 16, 16);
+            }
+            if (specialization && AbilityConfig.switchCooldownsEnabled() && switchCooldown > 0) {
+                gg.fill(x + 2, y + 2, x + CELL_SIZE - 2, y + CELL_SIZE - 2, 0xA0000000);
+                String remaining = ((switchCooldown + 19) / 20) + "s";
+                int textX = x + (CELL_SIZE - mc.font.width(remaining)) / 2;
+                int textY = y + (CELL_SIZE - mc.font.lineHeight) / 2;
+                gg.drawString(mc.font, remaining, textX, textY, 0xFFFFFFFF, true);
+            }
             if (hovered) {
                 int lvl = abilities.rank(def.id().core());
                 Component name = Component.literal(def.title()).withStyle(def.type() == net.revilodev.aura.abilities.AbilityNodeType.CORE ? ChatFormatting.GOLD : ChatFormatting.WHITE);
@@ -277,6 +292,9 @@ public final class AbilityListWidget extends AbstractWidget {
                         .append(Component.literal(" "))
                         .append(Component.translatable("gui.aura.level.short", lvl).withStyle(ChatFormatting.LIGHT_PURPLE)));
                 tooltip.add(Component.literal(def.description()).withStyle(ChatFormatting.GRAY));
+                if (affinityLocked) {
+                    tooltip.add(Component.literal("Requires " + def.id().core().title() + " mastery level " + AbilityConfig.requiredAffinityLevel(def.id())).withStyle(ChatFormatting.RED));
+                }
                 if (def.type() == net.revilodev.aura.abilities.AbilityNodeType.CORE) {
                     int cost = abilities.upgradeCost(def.id());
                     int refund = abilities.rank(def.id());
@@ -310,6 +328,7 @@ public final class AbilityListWidget extends AbstractWidget {
         selected = node.def.id();
         if (onClick != null) onClick.accept(node.def);
         if (!AuraClientConfig.abilityEnabled(node.def.id())) return true;
+        if (AbilityConfig.affinityLocked(abilities, node.def.id())) return true;
         boolean isCore = node.def.type() == net.revilodev.aura.abilities.AbilityNodeType.CORE;
         boolean isSpecialization = node.def.type() == net.revilodev.aura.abilities.AbilityNodeType.SPECIALIZATION;
         if (editLocked) return true;

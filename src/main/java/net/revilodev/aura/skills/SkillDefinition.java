@@ -21,6 +21,7 @@ public record SkillDefinition(
     }
 
     public int maxLevel() {
+        // reads the configured level cap
         return id.maxLevel();
     }
 

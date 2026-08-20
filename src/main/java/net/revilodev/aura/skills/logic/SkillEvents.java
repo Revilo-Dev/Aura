@@ -32,6 +32,7 @@ import java.util.Map;
 import java.util.UUID;
 import org.joml.Vector3f;
 
+// skill events
 public final class SkillEvents {
     private SkillEvents() {}
 

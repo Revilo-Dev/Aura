@@ -9,6 +9,7 @@ import net.neoforged.api.distmarker.Dist;
 import net.neoforged.api.distmarker.OnlyIn;
 
 @OnlyIn(Dist.CLIENT)
+// skills toggle button
 public final class SkillsToggleButton extends AbstractButton {
     private ResourceLocation texNormal;
     private ResourceLocation texHover;

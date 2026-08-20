@@ -5,6 +5,7 @@ import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 
+// disabled skills abilities screen
 public final class DisabledSkillsAbilitiesScreen extends Screen {
     private final Screen parent;
 

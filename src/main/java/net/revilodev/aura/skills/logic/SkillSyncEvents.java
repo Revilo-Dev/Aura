@@ -15,6 +15,7 @@ import net.revilodev.aura.skills.SkillsNetwork;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
+// skill sync events
 public final class SkillSyncEvents {
     private SkillSyncEvents() {}
 

@@ -18,6 +18,7 @@ import net.revilodev.aura.abilities.logic.AbilityLogic;
 import net.revilodev.aura.abilities.logic.AbilitySyncEvents;
 import net.neoforged.neoforge.common.NeoForge;
 
+// abilities network
 public final class AbilitiesNetwork {
     private static final String VERSION = "1";
     private static boolean REGISTERED = false;
@@ -57,9 +58,9 @@ public final class AbilitiesNetwork {
             PlayerAbilities abilities = player.getData(AbilitiesAttachments.PLAYER_ABILITIES.get());
             AbilityId id = AbilityId.byOrdinal(payload.abilityOrdinal());
             boolean changed = switch (payload.action()) {
-                case 0 -> abilities.tryUpgrade(id);
+                case 0 -> !AbilityConfig.affinityLocked(abilities, id) && abilities.tryUpgrade(id);
                 case 1 -> abilities.tryDowngrade(id);
-                case 2 -> trySwitchSpecialization(player, abilities, id);
+                case 2 -> !AbilityConfig.affinityLocked(abilities, id) && trySwitchSpecialization(player, abilities, id);
                 default -> false;
             };
             if (!changed) return;
@@ -69,7 +70,9 @@ public final class AbilitiesNetwork {
 
     private static boolean trySwitchSpecialization(ServerPlayer player, PlayerAbilities abilities, AbilityId target) {
         if (player == null || abilities == null || target == null || !target.isSpecialization()) return false;
+        if (AbilityConfig.affinityLocked(abilities, target)) return false;
         if (AbilityLogic.effectiveCoreRank(player, abilities, target) <= 0) return false;
+        if (player.gameMode.isSurvival() && AbilityConfig.switchCooldownsEnabled() && abilities.switchCooldownTicks(target) > 0) return false;
 
         AbilityId current = abilities.selectedSpecialization(target.element());
         if (current == target) return false;
