@@ -18,10 +18,6 @@ public final class ClientRuntimeBridgeImpl {
     }
 
     public static void openSkillsBook() {
-        if (AuraClientConfig.blockOpenSkillsAbilitiesPanel()) {
-            return;
-        }
-
         Minecraft mc = Minecraft.getInstance();
         if (mc == null) {
             return;

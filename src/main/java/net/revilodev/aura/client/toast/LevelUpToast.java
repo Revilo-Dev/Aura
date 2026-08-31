@@ -5,25 +5,21 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.sounds.SoundEvents;
 import net.neoforged.neoforge.client.event.RenderGuiEvent;
 
 // level up toast
 public final class LevelUpToast {
-    private static final ResourceLocation TEXTURE = ResourceLocation.fromNamespaceAndPath("aura", "textures/gui/sprites/skill_toast.png");
     private static final long DISPLAY_TIME_MS = 5000L;
     private static final long SLIDE_TIME_MS = 350L;
-    private static final int BOX_WIDTH = 160;
-    private static final int BOX_HEIGHT = 32;
-    private static final int RIGHT_MARGIN = 8;
-    private static final int TOP_MARGIN = 8;
-    private static final int TITLE_COLOR = 0x000000;
-    private static final int SKILL_COLOR = 0x1F4E8C;
-    private static final int ABILITY_COLOR = 0x7A3DB8;
+    private static final int BOX_WIDTH = 190;
+    private static final int BOX_HEIGHT = 44;
+    private static final int TOP_MARGIN = 12;
+    private static final int TITLE_COLOR = 0xFFFF55;
+    private static final int REWARD_COLOR = 0xFFFFFF;
 
     private static Component title = Component.empty();
-    private static Component skillLine = Component.empty();
-    private static Component abilityLine = Component.empty();
+    private static Component rewardLine = Component.empty();
     private static long shownAt = -1L;
 
     private LevelUpToast() {}
@@ -33,10 +29,13 @@ public final class LevelUpToast {
         if (mc == null) return;
 
         title = Component.translatable("toast.aura.level_up_levels", oldLevel, newLevel);
-        skillLine = Component.translatable("toast.aura.level_up_skill_points", Math.max(0, skillPointsGained));
-        abilityLine = abilityPointsGained > 0
-                ? Component.translatable("toast.aura.level_up_ability_points", abilityPointsGained)
-                : Component.empty();
+        rewardLine = abilityPointsGained > 0
+                ? Component.translatable("toast.aura.level_up_skill_points", Math.max(0, skillPointsGained))
+                .append(Component.translatable("toast.aura.level_up_ability_points", abilityPointsGained))
+                : Component.translatable("toast.aura.level_up_skill_points", Math.max(0, skillPointsGained));
+        if (mc.player != null) {
+            mc.player.playSound(SoundEvents.UI_TOAST_CHALLENGE_COMPLETE, 1.0F, 1.0F);
+        }
         shownAt = Util.getMillis();
     }
 
@@ -54,20 +53,18 @@ public final class LevelUpToast {
         Font font = mc.font;
         long visibleFor = DISPLAY_TIME_MS;
         float slide = toastSlide(elapsed, visibleFor);
-        int hiddenX = gg.guiWidth();
-        int shownX = gg.guiWidth() - BOX_WIDTH - RIGHT_MARGIN;
-        int x = Math.round(hiddenX + (shownX - hiddenX) * slide);
-        int y = TOP_MARGIN;
+        int x = (gg.guiWidth() - BOX_WIDTH) / 2;
+        int hiddenY = -BOX_HEIGHT;
+        int y = Math.round(hiddenY + (TOP_MARGIN - hiddenY) * slide);
 
         gg.pose().pushPose();
         gg.pose().translate(0.0F, 0.0F, 800.0F);
-        gg.blit(TEXTURE, x, y, 0, 0, BOX_WIDTH, BOX_HEIGHT, BOX_WIDTH, BOX_HEIGHT);
-
-        gg.drawString(font, title, x + 8, y + 7, TITLE_COLOR, false);
-        gg.drawString(font, skillLine, x + 8, y + 18, SKILL_COLOR, false);
-        if (!abilityLine.getString().isEmpty()) {
-            gg.drawString(font, abilityLine, x + 8 + font.width(skillLine), y + 18, ABILITY_COLOR, false);
-        }
+        gg.fill(x, y, x + BOX_WIDTH, y + BOX_HEIGHT, 0xFF1A1A1A);
+        gg.fill(x + 1, y + 1, x + BOX_WIDTH - 1, y + BOX_HEIGHT - 1, 0xFF3A2D12);
+        gg.fill(x + 3, y + 3, x + BOX_WIDTH - 3, y + BOX_HEIGHT - 3, 0xEE111111);
+        gg.fill(x + 3, y + 21, x + BOX_WIDTH - 3, y + 22, 0xFF8E6B25);
+        gg.drawCenteredString(font, title, x + BOX_WIDTH / 2, y + 7, TITLE_COLOR);
+        gg.drawCenteredString(font, rewardLine, x + BOX_WIDTH / 2, y + 28, REWARD_COLOR);
         gg.pose().popPose();
     }
 

@@ -179,7 +179,7 @@ public final class AbilityConfig {
         return switch (id) {
             case FIRE_IMPLODE, ICE_IMPLODE, LIGHTNING_IMPLODE, POISON_IMPLODE, ICE_PIERCE, LIGHTNING_STRIKE -> 2;
             case BLOOD_BURST -> 3;
-            case FIRE_STORM -> 4;
+            case FIRE_STORM, ICE_STORM, LIGHTNING_STORM -> 5;
             case FORCE_RAMPAGE, BLOOD_DRAIN -> 5;
             default -> 1;
         };
@@ -231,7 +231,8 @@ public final class AbilityConfig {
         return switch (id) {
             case FIRE_IMPLODE, ICE_IMPLODE, LIGHTNING_IMPLODE, POISON_IMPLODE, ICE_PIERCE, LIGHTNING_STRIKE -> 2;
             case BLOOD_BURST -> 3;
-            case ICE, LIGHTNING, FIRE_STORM -> 4;
+            case ICE, LIGHTNING -> 4;
+            case FIRE_STORM, ICE_STORM, LIGHTNING_STORM -> 5;
             case FORCE_RAMPAGE, BLOOD_DRAIN -> 5;
             default -> id.isSpecialization() ? 1 : 0;
         };

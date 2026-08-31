@@ -40,7 +40,7 @@ public enum AbilityId {
     BLOOD(AbilityElement.BLOOD, null, AbilityNodeType.CORE, null, SkillId.VITALITY, 4, 0, "blood"),
     BLOOD_HEAL(AbilityElement.BLOOD, AbilitySpecialization.STRIKE, AbilityNodeType.SPECIALIZATION, BLOOD, SkillId.VITALITY, 1, 180, "heal"),
     BLOOD_CLEANSE(AbilityElement.BLOOD, AbilitySpecialization.AEGIS, AbilityNodeType.SPECIALIZATION, BLOOD_HEAL, SkillId.VITALITY, 1, 240, "cleanse"),
-    BLOOD_BURST(AbilityElement.BLOOD, AbilitySpecialization.BURST, AbilityNodeType.SPECIALIZATION, BLOOD_CLEANSE, SkillId.VITALITY, 1, 160, "blood-burst"),
+    BLOOD_BURST(AbilityElement.BLOOD, AbilitySpecialization.BURST, AbilityNodeType.SPECIALIZATION, BLOOD_CLEANSE, SkillId.VITALITY, 5, 160, "blood-burst"),
     BLOOD_DRAIN(AbilityElement.BLOOD, AbilitySpecialization.DRAIN, AbilityNodeType.SPECIALIZATION, BLOOD_BURST, SkillId.VITALITY, 1, 240, "blood_beam"),
 
     WIND(AbilityElement.WIND, null, AbilityNodeType.CORE, null, SkillId.AGILITY, 4, 0, "wind"),
