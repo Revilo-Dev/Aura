@@ -29,6 +29,9 @@ public final class SkillLogic {
     private static final ResourceLocation MOD_MOVEMENT_SPEED = ResourceLocation.fromNamespaceAndPath(CodexMod.MOD_ID, "skill_agility");
     private static final ResourceLocation MOD_KB_RES = ResourceLocation.fromNamespaceAndPath(CodexMod.MOD_ID, "skill_knockback_res");
     private static final ResourceLocation MOD_LUCK = ResourceLocation.fromNamespaceAndPath(CodexMod.MOD_ID, "skill_luck");
+    private static final ResourceLocation MOD_ATTACK_SPEED = ResourceLocation.fromNamespaceAndPath(CodexMod.MOD_ID, "skill_attack_speed");
+    private static final ResourceLocation MOD_SWIMMING_SPEED = ResourceLocation.fromNamespaceAndPath(CodexMod.MOD_ID, "skill_swimming_speed");
+    private static final ResourceLocation MOD_LUCK_OF_THE_SEA = ResourceLocation.fromNamespaceAndPath(CodexMod.MOD_ID, "skill_luck_of_the_sea");
     private static final Map<UUID, Streak> COMBAT_STREAK = new HashMap<>();
     private static final int COMBAT_WINDOW_TICKS = 200;
 
@@ -37,11 +40,15 @@ public final class SkillLogic {
         int cur = skills.level(id);
         if (cur >= id.maxLevel()) return false;
         if (!skills.canUnlock(id)) return false;
-        return skills.tryUpgrade(id);
+        return skills.tryUpgrade(id, player.isCreative());
     }
 
     public static boolean tryDowngrade(PlayerSkills skills, SkillId id) {
         return skills.tryDowngrade(id);
+    }
+
+    public static boolean tryDowngrade(ServerPlayer player, PlayerSkills skills, SkillId id) {
+        return skills.tryDowngrade(id, player != null && player.isCreative());
     }
 
     public static int effectiveLevel(ServerPlayer player, PlayerSkills skills, SkillId id) {
@@ -81,6 +88,11 @@ public final class SkillLogic {
         if (proj > 0 && src.is(DamageTypeTags.IS_PROJECTILE)) {
             out *= (float) (1.0D - SkillBalance.projectileResistance(proj));
         }
+
+        int blast = effectiveLevel(target, skills, SkillId.BLAST_RESISTANCE);
+        if (blast > 0 && src.is(DamageTypeTags.IS_EXPLOSION)) {
+            out *= (float) (1.0D - SkillBalance.blastResistance(blast));
+        }
         return out;
     }
 
@@ -96,12 +108,18 @@ public final class SkillLogic {
         int agility = effectiveLevel(player, skills, SkillId.AGILITY);
         int kb = effectiveLevel(player, skills, SkillId.KNOCKBACK_RESISTANCE);
         int luck = effectiveLevel(player, skills, SkillId.LUCK);
+        int attackSpeed = effectiveLevel(player, skills, SkillId.ATTACK_SPEED);
+        int swimmingSpeed = effectiveLevel(player, skills, SkillId.SWIMMING_SPEED);
+        int luckOfTheSea = effectiveLevel(player, skills, SkillId.LUCK_OF_THE_SEA);
 
         applyModifier(player, Attributes.ATTACK_DAMAGE, MOD_ATTACK_DAMAGE, SkillBalance.strengthDamage(strength), AttributeModifier.Operation.ADD_VALUE);
         applyModifier(player, Attributes.MAX_HEALTH, MOD_MAX_HEALTH, SkillBalance.vitalityHearts(vitality) * 2.0D, AttributeModifier.Operation.ADD_VALUE);
         applyModifier(player, Attributes.MOVEMENT_SPEED, MOD_MOVEMENT_SPEED, SkillBalance.agilitySpeed(agility), AttributeModifier.Operation.ADD_MULTIPLIED_TOTAL);
         applyModifier(player, Attributes.KNOCKBACK_RESISTANCE, MOD_KB_RES, SkillBalance.knockbackResistance(kb), AttributeModifier.Operation.ADD_VALUE);
         applyModifier(player, Attributes.LUCK, MOD_LUCK, SkillBalance.luck(luck), AttributeModifier.Operation.ADD_VALUE);
+        applyModifier(player, Attributes.ATTACK_SPEED, MOD_ATTACK_SPEED, SkillBalance.attackSpeed(attackSpeed), AttributeModifier.Operation.ADD_MULTIPLIED_TOTAL);
+        applyModifier(player, Attributes.WATER_MOVEMENT_EFFICIENCY, MOD_SWIMMING_SPEED, SkillBalance.swimmingSpeed(swimmingSpeed), AttributeModifier.Operation.ADD_VALUE);
+        applyModifier(player, Attributes.LUCK, MOD_LUCK_OF_THE_SEA, SkillBalance.luckOfTheSea(luckOfTheSea), AttributeModifier.Operation.ADD_VALUE);
         clampToMaxHealth(player);
     }
 

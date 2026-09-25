@@ -120,11 +120,12 @@ public final class SkillDetailsPanel extends AbstractWidget {
         gg.hLine(x, x + w, y, 0xAA5A5A5A);
         PlayerSkills ps = mc.player.getData(SkillsAttachments.PLAYER_SKILLS.get());
         boolean editLocked = CodexAttributes.isAbilitySkillEditLocked(mc.player);
+        boolean creative = mc.player.isCreative();
         int level = ps.level(skill.id());
         boolean unlocked = ps.canUnlock(skill.id());
         boolean canUp = !editLocked && !AuraClientConfig.blockUpgradeDowngrade() && unlocked
                 && level < skill.maxLevel()
-                && ps.points() > 0;
+                && (creative || ps.points() > 0);
         boolean canDown = !editLocked && !AuraClientConfig.blockUpgradeDowngrade() && ps.canDowngrade(skill.id());
         gg.blit(skill.icon(), x + 4, y + 4, 0, 0, HEADER_ICON_SIZE, HEADER_ICON_SIZE, HEADER_ICON_SIZE, HEADER_ICON_SIZE);
         drawScaledText(gg, skill.title(), x + 18, y + 5, 0xFFFFFF, HEADER_TEXT_SCALE);
@@ -212,12 +213,15 @@ public final class SkillDetailsPanel extends AbstractWidget {
             case POWER -> "+" + fmt(SkillBalance.powerDamage(level)) + " bow damage";
             case CRIT_POWER -> "+" + fmt(SkillBalance.critPowerDamage(level)) + "x crit damage";
             case HASTE -> "+" + fmt(SkillBalance.hasteBreakSpeed(level)) + " blocks/s";
+            case BLAST_RESISTANCE -> "+" + fmt(SkillBalance.blastResistance(level) * 100.0D) + "% blast resistance";
             case RESISTANCE -> "+" + fmt(SkillBalance.resistance(level) * 100.0D) + "% resistance";
             case FIRE_RESISTANCE -> "+" + fmt(SkillBalance.fireResistance(level) * 100.0D) + "% fire resistance";
             case PROJECTILE_RESISTANCE -> "+" + fmt(SkillBalance.projectileResistance(level) * 100.0D) + "% projectile resistance";
             case KNOCKBACK_RESISTANCE -> "+" + fmt(SkillBalance.knockbackResistance(level) * 100.0D) + "% knockback resistance";
             case AGILITY -> "+" + fmt(SkillBalance.agilitySpeed(level) * 100.0D) + "% speed";
             case LEAPING -> "+" + fmt(SkillBalance.leapingBonus(level) * 100.0D) + "% jump height";
+            case ATTACK_SPEED -> "+" + fmt(SkillBalance.attackSpeed(level) * 100.0D) + "% attack speed";
+            case SWIMMING_SPEED -> "+" + fmt(SkillBalance.swimmingSpeed(level) * 100.0D) + "% swimming speed";
             case VITALITY -> "+" + fmt(SkillBalance.vitalityHearts(level)) + " hearts";
             case REGENERATION -> "+" + fmt(SkillBalance.regenHeartsPerSecond(level) * 100.0D) + "% regen";
             case HEALTH_BOOST -> "+" + fmt(SkillBalance.lifeLeach(luckLevel) * 100.0D)
@@ -228,6 +232,7 @@ public final class SkillDetailsPanel extends AbstractWidget {
             case LUCK -> "+" + fmt(SkillBalance.luck(level)) + " luck";
             case LOOTING -> "+" + fmt(SkillBalance.lootingChance(level) * 100.0D) + "% looting";
             case FORTUNE -> "+" + SkillBalance.fortuneBonus(level) + " fortune";
+            case LUCK_OF_THE_SEA -> "+" + fmt(SkillBalance.luckOfTheSea(level)) + " fishing luck";
         };
     }
 

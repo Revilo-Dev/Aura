@@ -115,7 +115,11 @@ public final class SkillListWidget extends AbstractWidget {
     }
 
     public static int gridHeight() {
-        return 4 * CELL_SIZE + 3 * GAP;
+        int rows = 1;
+        for (SkillDefinition primary : SkillRegistry.primarySkills()) {
+            rows = Math.max(rows, 1 + SkillRegistry.secondarySkillsFor(primary.id()).size());
+        }
+        return rows * CELL_SIZE + Math.max(0, rows - 1) * GAP;
     }
 
     public static int preferredHeight() {
@@ -128,6 +132,8 @@ public final class SkillListWidget extends AbstractWidget {
         reloadSkills();
         PlayerSkills ps = mc.player.getData(SkillsAttachments.PLAYER_SKILLS.get());
         boolean editLocked = CodexAttributes.isAbilitySkillEditLocked(mc.player);
+        boolean creative = mc.player.isCreative();
+        List<Component> hoveredTooltip = null;
 
         // header points
         if (headerVisible) {
@@ -182,25 +188,33 @@ public final class SkillListWidget extends AbstractWidget {
             int iconY = y + (CELL_SIZE - ICON_SIZE) / 2;
             gg.blit(def.icon(), iconX, iconY, 0, 0, ICON_SIZE, ICON_SIZE, ICON_SIZE, ICON_SIZE);
             if (hovered) {
-                gg.disableScissor();
                 Component name = Component.literal(def.title()).withStyle(def.primary() ? ChatFormatting.GOLD : ChatFormatting.WHITE);
-                List<Component> lines = List.of(
+                hoveredTooltip = List.of(
                         Component.empty()
                                 .append(name)
                                 .append(Component.literal(" "))
                                 .append(Component.translatable("gui.aura.level.short", ps.level(def.id())).withStyle(ChatFormatting.AQUA)),
                         Component.literal(def.description()).withStyle(ChatFormatting.GRAY),
-                        Component.literal("| " + pointText(1)).withStyle(ChatFormatting.GREEN)
+                        Component.literal(creative ? "| Free in Creative" : "| " + pointText(1)).withStyle(ChatFormatting.GREEN)
                 );
-                gg.renderTooltip(mc.font, lines, java.util.Optional.empty(), mouseX, mouseY);
-                gg.enableScissor(getX(), top, getX() + width, getY() + height);
             }
         }
         gg.disableScissor();
+        if (hoveredTooltip != null) {
+            gg.renderTooltip(mc.font, hoveredTooltip, java.util.Optional.empty(), mouseX,
+                    raisedTooltipY(hoveredTooltip, mouseY, getY() + height));
+        }
     }
 
     private static String pointText(int points) {
         return points + " Point" + (points == 1 ? "" : "s");
+    }
+
+    private int raisedTooltipY(List<Component> lines, int requestedY, int cutoffBottom) {
+        int lineCount = 0;
+        for (Component line : lines) lineCount += Math.max(1, mc.font.split(line, 220).size());
+        int height = lineCount * mc.font.lineHeight + 8;
+        return Math.max(4, Math.min(requestedY, cutoffBottom - height - 4));
     }
 
     @Override

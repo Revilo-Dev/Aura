@@ -24,6 +24,8 @@ public final class CodexMobEffects {
                                 case 1 -> 0.50D;
                                 default -> 1.0D;
                             }));
+    public static final Holder<MobEffect> PERMAFROST = REGISTER.register("permafrost", PermafrostEffect::new);
+    public static final Holder<MobEffect> TOXIN = REGISTER.register("toxin", ToxinEffect::new);
     // raging effect functionality: vanilla attack damage and speed effects
     public static final Holder<MobEffect> RAMPAGING = REGISTER.register("rampaging", () ->
             new RampagingEffect()

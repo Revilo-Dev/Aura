@@ -97,6 +97,59 @@ public enum AbilityId {
         return ResourceLocation.fromNamespaceAndPath("aura", "textures/gui/abilities/" + iconName + ".png");
     }
 
+    public ResourceLocation iconTexture(boolean finalForm) {
+        if (!finalForm) return iconTexture();
+        return ResourceLocation.fromNamespaceAndPath("aura", "textures/gui/abilities/" + finalIconName() + ".png");
+    }
+
+    public String title(boolean finalForm) {
+        return finalForm ? Component.translatable("ability.aura." + finalIconName() + ".name").getString() : title();
+    }
+
+    public String description(boolean finalForm) {
+        return finalForm ? Component.translatable("ability.aura." + finalIconName() + ".description").getString() : description();
+    }
+
+    private String finalIconName() {
+        return switch (this) {
+            case FIRE -> "ultimate-soulfire";
+            case FIRE_NOVA -> "ultimate-soulfire_aura";
+            case FIRE_BURST -> "ultimate-soulfire_burst";
+            case FIRE_IMPLODE -> "ultimate-soulfire_blast";
+            case FIRE_STORM -> "ultimate-soulfire_storm";
+            case ICE -> "ultimate-permafrost";
+            case ICE_NOVA -> "ultimate-permafrost_aura";
+            case ICE_BURST -> "ultimate-permafrost_burst";
+            case ICE_IMPLODE -> "ultimate-permafrost_blast";
+            case ICE_PIERCE -> "ultimate-permafrost_pierce";
+            case ICE_GLACIER -> "ultimate-permafrost_glacier";
+            case ICE_STORM -> "ultimate-permafrost_storm";
+            case LIGHTNING -> "ultimate-plasma";
+            case LIGHTNING_NOVA -> "ultimate-plasma_aura";
+            case LIGHTNING_ZAP -> "ultimate-plasma_burst";
+            case LIGHTNING_IMPLODE -> "ultimate-plasma_blast";
+            case LIGHTNING_STRIKE -> "ultimate-plasma_strike";
+            case LIGHTNING_STORM -> "ultimate-plasma_storm";
+            case POISON -> "ultimate-toxin";
+            case POISON_NOVA -> "ultimate-toxin_aura";
+            case POISON_BURST -> "ultimate-toxin_burst";
+            case POISON_IMPLODE -> "ultimate-toxin_blast";
+            case FORCE -> "ultimate-singularity";
+            case FORCE_AEGIS -> "ultimate-singularity_aegis";
+            case FORCE_BURST -> "ultimate-singularity_implode";
+            case FORCE_RAMPAGE -> "ultimate-singularity_rampage";
+            case BLOOD -> "ultimate-bloodfire";
+            case BLOOD_HEAL -> "ultimate-bloodfire-heal";
+            case BLOOD_CLEANSE -> "ultimate-bloodfire-cleanse";
+            case BLOOD_BURST -> "ultimate-bloodfire-burst";
+            case BLOOD_DRAIN -> "ultimate-bloodfire-beam";
+            case WIND -> "ultimate-tempest";
+            case WIND_DASH -> "ultimate-tempest_dash";
+            case WIND_LEAP -> "ultimate-tempest_leap";
+            case WIND_LUNGE -> "ultimate-tempest_lunge";
+        };
+    }
+
     public static AbilityId byOrdinal(int ordinal) {
         AbilityId[] values = values();
         if (ordinal < 0 || ordinal >= values.length) return null;

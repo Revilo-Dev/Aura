@@ -27,11 +27,25 @@ public final class BurstCubeProjectileRenderer extends EntityRenderer<BurstCubeP
         float b = 1.0F;
         AbilityElement element = entity.element();
         if (element == AbilityElement.FIRE) {
-            r = 1.0F; g = 0.45F; b = 0.1F;
+            if (entity.finalForm()) {
+                r = 0.2F; g = 0.75F; b = 1.0F;
+            } else {
+                r = 1.0F; g = 0.45F; b = 0.1F;
+            }
         } else if (element == AbilityElement.ICE) {
             r = 0.35F; g = 0.7F; b = 1.0F;
         } else if (element == AbilityElement.POISON) {
-            r = 0.35F; g = 1.0F; b = 0.35F;
+            if (entity.finalForm()) {
+                r = 0.65F; g = 0.2F; b = 1.0F;
+            } else {
+                r = 0.35F; g = 1.0F; b = 0.35F;
+            }
+        } else if (element == AbilityElement.LIGHTNING) {
+            if (entity.finalForm()) {
+                r = 0.55F; g = 0.25F; b = 1.0F;
+            } else {
+                r = 0.55F; g = 0.8F; b = 1.0F;
+            }
         }
         VertexConsumer vc = buffer.getBuffer(RenderType.debugQuads());
         addCube(vc, poseStack, r, g, b, 1.0F);

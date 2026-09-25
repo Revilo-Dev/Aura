@@ -88,7 +88,7 @@ public final class SkillsNetwork {
             PlayerSkills skills = sp.getData(SkillsAttachments.PLAYER_SKILLS.get());
             boolean changed = payload.upgrade()
                     ? SkillLogic.tryUpgrade(sp, skills, id)
-                    : SkillLogic.tryDowngrade(skills, id);
+                    : SkillLogic.tryDowngrade(sp, skills, id);
 
             if (!changed) return;
 

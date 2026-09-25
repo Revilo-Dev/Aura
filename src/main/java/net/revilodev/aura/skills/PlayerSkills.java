@@ -28,6 +28,10 @@ public final class PlayerSkills implements INBTSerializable<CompoundTag> {
     }
 
     public boolean tryUpgrade(SkillId id) {
+        return tryUpgrade(id, false);
+    }
+
+    public boolean tryUpgrade(SkillId id, boolean free) {
         SkillDefinition def = SkillRegistry.def(id);
         if (def == null) return false;
 
@@ -38,21 +42,25 @@ public final class PlayerSkills implements INBTSerializable<CompoundTag> {
         if (cur >= def.maxLevel()) return false;
 
         int p = points;
-        if (p <= 0) return false;
+        if (!free && p <= 0) return false;
 
-        points = p - 1;
+        if (!free) points = p - 1;
         levels.put(id, cur + 1);
         modifiersDirty = true;
         return true;
     }
 
     public boolean tryDowngrade(SkillId id) {
+        return tryDowngrade(id, false);
+    }
+
+    public boolean tryDowngrade(SkillId id, boolean free) {
         // keep child investments valid
         if (!canDowngrade(id)) return false;
         int cur = level(id);
 
         levels.put(id, cur - 1);
-        points = Math.max(0, points + 1);
+        if (!free) points = Math.max(0, points + 1);
         modifiersDirty = true;
         return true;
     }

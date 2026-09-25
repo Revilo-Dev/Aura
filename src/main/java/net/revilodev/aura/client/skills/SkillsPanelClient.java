@@ -7,6 +7,7 @@ import net.minecraft.client.gui.components.ImageButton;
 import net.minecraft.client.gui.narration.NarrationElementOutput;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.inventory.InventoryScreen;
+import net.minecraft.client.gui.screens.recipebook.RecipeBookComponent;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.Mth;
@@ -21,6 +22,7 @@ import net.revilodev.aura.CodexMod;
 import net.revilodev.aura.abilities.AbilitiesAttachments;
 import net.revilodev.aura.abilities.AbilityElement;
 import net.revilodev.aura.abilities.AbilityDefinition;
+import net.revilodev.aura.abilities.AbilityConfig;
 import net.revilodev.aura.abilities.AbilityId;
 import net.revilodev.aura.abilities.AbilityRegistry;
 import net.revilodev.aura.abilities.PlayerAbilities;
@@ -382,6 +384,13 @@ public final class SkillsPanelClient {
         applySkillsVsRecipePanelRule(st.inv, st);
     }
 
+    /** Allows optional inventory-panel integrations to close Aura without accessing its private state. */
+    public static void closeAllOpenPanels() {
+        for (State st : STATES.values()) {
+            if (st != null && st.open) closeAuraPanel(st);
+        }
+    }
+
     private static void closeBoundlessPanelFallback() {
         if (!ModList.get().isLoaded("boundless")) return;
         try {
@@ -431,8 +440,8 @@ public final class SkillsPanelClient {
     }
 
     private static boolean isRecipePanelOpen(InventoryScreen inv) {
-        int centeredLeft = (inv.width - inv.getXSize()) / 2;
-        return inv.getGuiLeft() > centeredLeft + 10;
+        RecipeBookComponent recipeBook = inv.getRecipeBookComponent();
+        return recipeBook != null && recipeBook.isVisible();
     }
 
     private static int computeCenteredLeft(InventoryScreen inv) {
@@ -681,7 +690,8 @@ public final class SkillsPanelClient {
             AbilityDefinition def = AbilityRegistry.def(selected);
             if (def == null) continue;
             int y = listY + 8 + (row * 9);
-            String line = Component.translatable("gui.aura.player.ability_bind", selected.title(), AbilityKeybinds.keyName(selected)).getString();
+            boolean finalForm = AbilityConfig.ultimateAbilitiesEnabled() && playerAbilities.rank(selected.core()) >= selected.core().maxRank();
+            String line = Component.translatable("gui.aura.player.ability_bind", selected.title(finalForm), AbilityKeybinds.keyName(selected)).getString();
             boolean hovered = mouseX >= leftColX && mouseX <= leftColX + 68 && mouseY >= y && mouseY <= y + 8;
             drawScaledText(gg, mc, line, leftColX, y + 1, elementColor(def.element()), hovered ? 0.525F : 0.5F);
             hoveredTooltip = tooltipIfHovered(hoveredTooltip, mc, mouseX, mouseY, leftColX, y + 1, line, hovered ? 0.525F : 0.5F);

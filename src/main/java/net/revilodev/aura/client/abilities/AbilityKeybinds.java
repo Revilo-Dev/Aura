@@ -276,7 +276,7 @@ public final class AbilityKeybinds {
     }
 
     private static AbilityUseFail localFailure(Minecraft mc, PlayerAbilities data, AbilityId id) {
-        if (data.cooldownTicks(id) > 0) {
+        if (mc.player != null && !mc.player.isCreative() && data.cooldownTicks(id) > 0) {
             return AbilityUseFail.COOLDOWN;
         }
         return mc.player == null ? AbilityUseFail.NO_TARGET : null;

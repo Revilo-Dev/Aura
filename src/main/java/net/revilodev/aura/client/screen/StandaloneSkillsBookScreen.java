@@ -26,6 +26,7 @@ import net.revilodev.aura.client.skills.SkillListWidget;
 import net.revilodev.aura.client.skills.SkillPanelHeaderRenderer;
 import net.revilodev.aura.abilities.AbilityElement;
 import net.revilodev.aura.abilities.AbilityDefinition;
+import net.revilodev.aura.abilities.AbilityConfig;
 import net.revilodev.aura.abilities.AbilityId;
 import net.revilodev.aura.abilities.AbilityRegistry;
 import net.revilodev.aura.skills.SkillBalance;
@@ -472,7 +473,8 @@ public final class StandaloneSkillsBookScreen extends Screen {
             AbilityDefinition def = AbilityRegistry.def(selected);
             if (def == null) continue;
             int y = listY + 8 + (row * 9);
-            String line = Component.translatable("gui.aura.player.ability_bind", selected.title(), AbilityKeybinds.keyName(selected)).getString();
+            boolean finalForm = AbilityConfig.ultimateAbilitiesEnabled() && playerAbilities.rank(selected.core()) >= selected.core().maxRank();
+            String line = Component.translatable("gui.aura.player.ability_bind", selected.title(finalForm), AbilityKeybinds.keyName(selected)).getString();
             boolean hovered = mouseX >= leftColX && mouseX <= leftColX + 68 && mouseY >= y && mouseY <= y + 8;
             drawScaledText(gg, line, leftColX, y + 1, elementColor(def.element()), hovered ? 0.525F : 0.5F);
             hoveredTooltip = tooltipIfHovered(hoveredTooltip, mouseX, mouseY, leftColX, y + 1, line, hovered ? 0.525F : 0.5F);

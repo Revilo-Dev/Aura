@@ -58,8 +58,8 @@ public final class AbilitiesNetwork {
             PlayerAbilities abilities = player.getData(AbilitiesAttachments.PLAYER_ABILITIES.get());
             AbilityId id = AbilityId.byOrdinal(payload.abilityOrdinal());
             boolean changed = switch (payload.action()) {
-                case 0 -> !AbilityConfig.affinityLocked(abilities, id) && abilities.tryUpgrade(id);
-                case 1 -> abilities.tryDowngrade(id);
+                case 0 -> !AbilityConfig.affinityLocked(abilities, id) && abilities.tryUpgrade(id, player.isCreative());
+                case 1 -> abilities.tryDowngrade(id, player.isCreative());
                 case 2 -> !AbilityConfig.affinityLocked(abilities, id) && trySwitchSpecialization(player, abilities, id);
                 default -> false;
             };
@@ -72,12 +72,12 @@ public final class AbilitiesNetwork {
         if (player == null || abilities == null || target == null || !target.isSpecialization()) return false;
         if (AbilityConfig.affinityLocked(abilities, target)) return false;
         if (AbilityLogic.effectiveCoreRank(player, abilities, target) <= 0) return false;
-        if (player.gameMode.isSurvival() && AbilityConfig.switchCooldownsEnabled() && abilities.switchCooldownTicks(target) > 0) return false;
+        if (!player.isCreative() && AbilityConfig.switchCooldownsEnabled() && abilities.switchCooldownTicks(target) > 0) return false;
 
         AbilityId current = abilities.selectedSpecialization(target.element());
         if (current == target) return false;
-        if (abilities.cooldownTicks(target) > 0) return false;
-        if (current != null && abilities.cooldownTicks(current) > 0) return false;
+        if (!player.isCreative() && abilities.cooldownTicks(target) > 0) return false;
+        if (!player.isCreative() && current != null && abilities.cooldownTicks(current) > 0) return false;
 
         AbilitySwitchEvent.Pre pre = new AbilitySwitchEvent.Pre(player, target.element(), current, target);
         if (NeoForge.EVENT_BUS.post(pre).isCanceled()) return false;

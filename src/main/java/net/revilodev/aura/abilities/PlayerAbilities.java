@@ -48,16 +48,24 @@ public final class PlayerAbilities implements INBTSerializable<CompoundTag> {
     }
 
     public boolean tryUpgrade(AbilityId id) {
-        if (!canUpgrade(id)) return false;
+        return tryUpgrade(id, false);
+    }
+
+    public boolean tryUpgrade(AbilityId id, boolean free) {
+        if (!canUpgrade(id, free)) return false;
 
         // scaling cost per rank
         int cur = rank(id);
-        points -= upgradeCost(id);
+        if (!free) points -= upgradeCost(id);
         ranks.put(id, cur + 1);
         return true;
     }
 
     public boolean tryDowngrade(AbilityId id) {
+        return tryDowngrade(id, false);
+    }
+
+    public boolean tryDowngrade(AbilityId id, boolean free) {
         if (!canDowngrade(id)) return false;
 
         // refund current rank cost
@@ -65,7 +73,7 @@ public final class PlayerAbilities implements INBTSerializable<CompoundTag> {
         int next = cur - 1;
         ranks.put(id, next);
         clearLockedSpecializations();
-        points += cur;
+        if (!free) points += cur;
         if (next <= 0) {
             cooldowns.remove(id);
             activeTicks.remove(id);
@@ -75,9 +83,13 @@ public final class PlayerAbilities implements INBTSerializable<CompoundTag> {
     }
 
     public boolean canUpgrade(AbilityId id) {
+        return canUpgrade(id, false);
+    }
+
+    public boolean canUpgrade(AbilityId id, boolean ignorePointCost) {
         if (id == null || !AbilityConfig.enabled(id)) return false;
         int cur = rank(id);
-        if (cur >= id.maxRank() || points < upgradeCost(id)) return false;
+        if (cur >= id.maxRank() || (!ignorePointCost && points < upgradeCost(id))) return false;
         if (id.required() != null && rank(id.required()) <= 0) return false;
         return true;
     }

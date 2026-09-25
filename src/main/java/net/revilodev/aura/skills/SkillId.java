@@ -25,7 +25,12 @@ public enum SkillId {
 
     LUCK(SkillCategory.LUCK, true, null, "luck", 10),
     LOOTING(SkillCategory.LUCK, false, LUCK, "luck-looting", 2),
-    FORTUNE(SkillCategory.LUCK, false, LUCK, "luck-fortune", 2);
+    FORTUNE(SkillCategory.LUCK, false, LUCK, "luck-fortune", 2),
+
+    BLAST_RESISTANCE(SkillCategory.STRENGTH, false, STRENGTH, "strength-blast-resistance", "resistance-knockback", 5),
+    ATTACK_SPEED(SkillCategory.AGILITY, false, AGILITY, "agility-attack-speed", "strength-haste", 5),
+    SWIMMING_SPEED(SkillCategory.AGILITY, false, AGILITY, "agility-swimming-speed", "agility-jump", 5),
+    LUCK_OF_THE_SEA(SkillCategory.LUCK, false, LUCK, "luck-luck-of-the-sea", "luck-fortune", 5);
 
     private final SkillCategory category;
     private final boolean primary;
@@ -35,10 +40,14 @@ public enum SkillId {
     private final int defaultMaxLevel;
 
     SkillId(SkillCategory category, boolean primary, SkillId parent, String iconPath, int maxLevel) {
+        this(category, primary, parent, iconPath, iconPath, maxLevel);
+    }
+
+    SkillId(SkillCategory category, boolean primary, SkillId parent, String translationPath, String iconPath, int maxLevel) {
         this.category = category;
         this.primary = primary;
         this.parent = parent;
-        this.translationPath = iconPath;
+        this.translationPath = translationPath;
         this.icon = ResourceLocation.fromNamespaceAndPath(CodexMod.MOD_ID, "textures/gui/skills/" + iconPath + ".png");
         this.defaultMaxLevel = maxLevel;
     }

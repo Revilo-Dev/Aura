@@ -11,6 +11,7 @@ public final class AbilityConfig {
 
     private static final ModConfigSpec.IntValue POINT_INTERVAL_LEVELS;
     private static final ModConfigSpec.BooleanValue ENABLE_ABILITIES;
+    private static final ModConfigSpec.BooleanValue ENABLE_ULTIMATE_ABILITIES;
     private static final ModConfigSpec.DoubleValue COOLDOWN_MULTIPLIER;
     private static final ModConfigSpec.DoubleValue PRIMARY_SCALING_MULTIPLIER;
     private static final ModConfigSpec.DoubleValue ABILITY_POWER_LEVEL_1;
@@ -41,6 +42,7 @@ public final class AbilityConfig {
 
         builder.push("general");
         ENABLE_ABILITIES = builder.define("enableAbilities", true);
+        ENABLE_ULTIMATE_ABILITIES = builder.define("enableUltimateAbilities", true);
         COOLDOWN_MULTIPLIER = builder.defineInRange("cooldownMultiplier", 1.0D, 0.1D, 5.0D);
         PRIMARY_SCALING_MULTIPLIER = builder.defineInRange("primaryScalingMultiplier", 1.0D, 0.0D, 5.0D);
         ABILITY_POWER_LEVEL_1 = builder.defineInRange("abilityPowerEnchantmentLevel1", 0.05D, 0.0D, 2.0D);
@@ -110,6 +112,15 @@ public final class AbilityConfig {
     public static boolean abilitiesEnabled() {
         if (!configLoaded) return true;
         return ENABLE_ABILITIES.get();
+    }
+
+    public static boolean ultimateAbilitiesEnabled() {
+        return !configLoaded || ENABLE_ULTIMATE_ABILITIES.get();
+    }
+
+    public static void setUltimateAbilitiesEnabled(boolean enabled) {
+        ENABLE_ULTIMATE_ABILITIES.set(enabled);
+        SPEC.save();
     }
 
     public static double cooldownMultiplier() {

@@ -13,6 +13,7 @@ import net.revilodev.aura.effect.CodexMobEffects;
 import net.revilodev.aura.effect.CodexPotions;
 import net.revilodev.aura.entity.ModEntities;
 import net.revilodev.aura.item.ModItems;
+import net.revilodev.aura.particle.ModParticles;
 import net.revilodev.aura.skills.SkillsAttachments;
 import net.revilodev.aura.skills.SkillConfig;
 import net.revilodev.aura.skills.SkillsEvents;
@@ -28,6 +29,7 @@ public final class CodexMod {
         ModItems.register(modBus);                 // <-- REQUIRED
         CodexAttributes.register(modBus);
         CodexMobEffects.register(modBus);
+        ModParticles.register(modBus);
         CodexPotions.register(modBus);
         ModEntities.register(modBus);
         CodexStats.register(modBus);

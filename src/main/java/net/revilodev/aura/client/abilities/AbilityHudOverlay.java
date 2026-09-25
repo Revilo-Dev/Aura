@@ -98,9 +98,14 @@ public final class AbilityHudOverlay {
         if (abilities == null) return List.of();
 
         // prefer recent uses
-        List<AbilityId> recent = new ArrayList<>(abilities.recentAbilities());
+        List<AbilityId> recent = abilities.recentAbilities().stream()
+                .filter(id -> id != null && id.isSpecialization())
+                .filter(id -> abilities.selectedSpecialization(id.element()) == id)
+                .filter(id -> abilities.rank(id.core()) > 0)
+                .limit(4)
+                .toList();
         if (!recent.isEmpty()) {
-            return List.copyOf(recent.subList(0, Math.min(4, recent.size())));
+            return recent;
         }
 
         // fallback to active picks
@@ -153,10 +158,14 @@ public final class AbilityHudOverlay {
         }
 
         AbilityDefinition def = AbilityRegistry.def(id);
-        if (def != null) gg.blit(def.iconTexture(), drawX + 2, y + 2, 0, 0, 16, 16, 16, 16);
+        if (def != null) {
+            boolean finalForm = AbilityConfig.ultimateAbilitiesEnabled() && abilities.rank(id.core()) >= id.core().maxRank();
+            gg.blit(id.iconTexture(finalForm), drawX + 2, y + 2, 0, 0, 16, 16, 16, 16);
+        }
 
         // cooldown fill
-        int remaining = abilities.cooldownTicks(id);
+        Minecraft minecraft = Minecraft.getInstance();
+        int remaining = minecraft.player != null && minecraft.player.isCreative() ? 0 : abilities.cooldownTicks(id);
         if (remaining > 0) {
             int rank = Math.max(1, abilities.rank(id));
             int max = Math.max(1, AbilityScaling.cooldownTicks(id, rank, skills));

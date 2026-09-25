@@ -48,6 +48,9 @@ public final class AuraBookSettingsModel {
             case FEATURES -> {
                 rows.add(row(Component.translatable("gui.aura.settings.spawn_with_book").getString(), () -> boolState(SkillConfig.spawnWithSkillsBook()), button -> SkillConfig.setSpawnWithSkillsBook(!SkillConfig.spawnWithSkillsBook())));
                 rows.add(row(Component.translatable("gui.aura.settings.disable_skills_abilities").getString(), () -> boolState(AuraClientConfig.disableSkillsAndAbilities()), button -> AuraClientConfig.toggleDisableSkillsAndAbilities()));
+                rows.add(row(Component.translatable("gui.aura.settings.ultimate_abilities").getString(),
+                        () -> boolState(AbilityConfig.ultimateAbilitiesEnabled()),
+                        button -> AbilityConfig.setUltimateAbilitiesEnabled(!AbilityConfig.ultimateAbilitiesEnabled())));
                 rows.add(row(Component.translatable("gui.aura.settings.block_ability_switching").getString(), () -> boolState(AuraClientConfig.blockAbilitySwitching()), button -> AuraClientConfig.toggleBlockAbilitySwitching()));
                 rows.add(row(Component.translatable("gui.aura.settings.block_upgrade_downgrade").getString(), () -> boolState(AuraClientConfig.blockUpgradeDowngrade()), button -> AuraClientConfig.toggleBlockUpgradeDowngrade()));
                 rows.add(row(Component.translatable("gui.aura.settings.level_locks").getString(), () -> boolState(AbilityConfig.affinityLocksEnabled()), button -> AbilityConfig.setAffinityLocksEnabled(!AbilityConfig.affinityLocksEnabled())));

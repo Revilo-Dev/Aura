@@ -202,6 +202,8 @@ public final class AbilityListWidget extends AbstractWidget {
         PlayerAbilities abilities = mc.player.getData(AbilitiesAttachments.PLAYER_ABILITIES.get());
         PlayerSkills skills = mc.player.getData(SkillsAttachments.PLAYER_SKILLS.get());
         boolean editLocked = CodexAttributes.isAbilitySkillEditLocked(mc.player);
+        boolean creative = mc.player.isCreative();
+        List<Component> hoveredTooltip = null;
 
         // header points
         if (headerVisible) {
@@ -229,7 +231,7 @@ public final class AbilityListWidget extends AbstractWidget {
             if (node.row <= 0 || node.def.required() == null) continue;
             int x = viewportX + node.col * (CELL_SIZE + GAP) - offsetX;
             int y = top + node.row * (CELL_SIZE + GAP) - offsetY;
-            ResourceLocation tex = abilities.canUpgrade(node.def.id()) || abilities.unlocked(node.def.id()) ? LINK_TEX : LINK_DISABLED_TEX;
+            ResourceLocation tex = abilities.canUpgrade(node.def.id(), creative) || abilities.unlocked(node.def.id()) ? LINK_TEX : LINK_DISABLED_TEX;
             int linkX = x + (CELL_SIZE - LINK_WIDTH) / 2;
             int linkY = y - ((LINK_HEIGHT - GAP) / 2);
             gg.blit(tex, linkX, linkY, 0, 0, LINK_WIDTH, LINK_HEIGHT, LINK_WIDTH, LINK_HEIGHT);
@@ -244,6 +246,7 @@ public final class AbilityListWidget extends AbstractWidget {
             boolean hovered = isNodeVisible(x, y, viewportX, viewportY, viewportW, viewportH)
                     && mouseX >= x && mouseX <= x + CELL_SIZE && mouseY >= y && mouseY <= y + CELL_SIZE;
             int rank = abilities.rank(def.id());
+            boolean finalForm = AbilityConfig.ultimateAbilitiesEnabled() && abilities.rank(def.id().core()) >= def.id().core().maxRank();
             boolean unlocked = rank > 0;
             boolean maxed = rank >= def.maxRank();
             boolean primary = def.type() == net.revilodev.aura.abilities.AbilityNodeType.CORE;
@@ -261,7 +264,7 @@ public final class AbilityListWidget extends AbstractWidget {
                 tex = WIDGET_PRIMARY_DISABLED_TEX;
             } else if (specialization && selectedSpec != null && !isSelectedSpecialization) {
                 tex = hovered ? WIDGET_DISABLED_HOVER_TEX : WIDGET_DISABLED_TEX;
-            } else if (!primary && !abilities.canUpgrade(def.id()) && !unlocked && !(specialization && isSelectedSpecialization)) {
+            } else if (!primary && !abilities.canUpgrade(def.id(), creative) && !unlocked && !(specialization && isSelectedSpecialization)) {
                 tex = hovered ? WIDGET_DISABLED_HOVER_TEX : WIDGET_DISABLED_TEX;
             } else if (primary) {
                 tex = (selected == def.id() || hovered) ? WIDGET_PRIMARY_HOVER_TEX : WIDGET_PRIMARY_TEX;
@@ -272,11 +275,11 @@ public final class AbilityListWidget extends AbstractWidget {
                 tex = (selected == def.id() || hovered) ? WIDGET_PRIMARY_HOVER_TEX : WIDGET_PRIMARY_TEX;
             }
             drawScaledTile(gg, tex, x, y, CELL_SIZE, CELL_SIZE);
-            gg.blit(def.iconTexture(), x + 3, y + 3, 0, 0, 16, 16, 16, 16);
+            gg.blit(def.id().iconTexture(finalForm), x + 3, y + 3, 0, 0, 16, 16, 16, 16);
             if (affinityLocked) {
                 gg.blit(LOCKED_TEX, x + 3, y + 3, 0, 0, 16, 16, 16, 16);
             }
-            if (specialization && AbilityConfig.switchCooldownsEnabled() && switchCooldown > 0) {
+            if (!creative && specialization && AbilityConfig.switchCooldownsEnabled() && switchCooldown > 0) {
                 gg.fill(x + 2, y + 2, x + CELL_SIZE - 2, y + CELL_SIZE - 2, 0xA0000000);
                 String remaining = ((switchCooldown + 19) / 20) + "s";
                 int textX = x + (CELL_SIZE - mc.font.width(remaining)) / 2;
@@ -285,31 +288,34 @@ public final class AbilityListWidget extends AbstractWidget {
             }
             if (hovered) {
                 int lvl = abilities.rank(def.id().core());
-                Component name = Component.literal(def.title()).withStyle(def.type() == net.revilodev.aura.abilities.AbilityNodeType.CORE ? ChatFormatting.GOLD : ChatFormatting.WHITE);
+                Component name = Component.literal(def.id().title(finalForm)).withStyle(def.type() == net.revilodev.aura.abilities.AbilityNodeType.CORE ? ChatFormatting.GOLD : ChatFormatting.WHITE);
                 List<Component> tooltip = new ArrayList<>();
                 tooltip.add(Component.empty()
                         .append(name)
                         .append(Component.literal(" "))
                         .append(Component.translatable("gui.aura.level.short", lvl).withStyle(ChatFormatting.LIGHT_PURPLE)));
-                tooltip.add(Component.literal(def.description()).withStyle(ChatFormatting.GRAY));
+                tooltip.add(Component.literal(def.id().description(finalForm)).withStyle(ChatFormatting.GRAY));
                 if (affinityLocked) {
                     tooltip.add(Component.literal("Requires " + def.id().core().title() + " mastery level " + AbilityConfig.requiredAffinityLevel(def.id())).withStyle(ChatFormatting.RED));
                 }
                 if (def.type() == net.revilodev.aura.abilities.AbilityNodeType.CORE) {
                     int cost = abilities.upgradeCost(def.id());
                     int refund = abilities.rank(def.id());
-                    tooltip.add(Component.literal("| " + pointText(cost)).withStyle(ChatFormatting.GREEN));
-                    if (refund > 0) tooltip.add(Component.literal("| " + pointText(refund)).withStyle(ChatFormatting.RED));
+                    tooltip.add(styledStatLine(statParts(def.id(), Math.max(1, lvl), skills, finalForm)));
+                    tooltip.add(Component.literal(creative ? "| Free in Creative" : "| " + pointText(cost)).withStyle(ChatFormatting.GREEN));
+                    if (!creative && refund > 0) tooltip.add(Component.literal("| " + pointText(refund)).withStyle(ChatFormatting.RED));
                 } else {
-                    tooltip.add(styledStatLine(statParts(def.id(), Math.max(1, lvl), skills)));
+                    tooltip.add(styledStatLine(statParts(def.id(), Math.max(1, lvl), skills, finalForm)));
                     tooltip.add(Component.translatable("gui.aura.hint.click_select").withStyle(ChatFormatting.GREEN));
                 }
-                gg.disableScissor();
-                gg.renderTooltip(mc.font, tooltip, java.util.Optional.empty(), mouseX, mouseY - 4);
-                gg.enableScissor(viewportX, viewportY, viewportX + viewportW, viewportY + viewportH);
+                hoveredTooltip = tooltip;
             }
         }
         gg.disableScissor();
+        if (hoveredTooltip != null) {
+            gg.renderTooltip(mc.font, hoveredTooltip, java.util.Optional.empty(), mouseX,
+                    raisedTooltipY(hoveredTooltip, mouseY - 4, viewportY + viewportH));
+        }
     }
 
     @Override
@@ -427,9 +433,16 @@ public final class AbilityListWidget extends AbstractWidget {
         return String.format(java.util.Locale.ROOT, "%.1fhp", damage / seconds);
     }
 
-    private List<StatPart> statParts(AbilityId id, int level, PlayerSkills skills) {
+    private List<StatPart> statParts(AbilityId id, int level, PlayerSkills skills, boolean finalForm) {
         List<StatPart> out = new ArrayList<>();
-        out.add(new StatPart("Cooldown " + formatSeconds(AbilityScaling.cooldownTicks(id, level, skills)), ChatFormatting.YELLOW));
+        if (id.isCore()) {
+            String stat = id.element() == AbilityElement.WIND ? "Power" : "Damage";
+            out.add(new StatPart(stat + " +" + fmt(AbilityScaling.masteryDamageBonus(level) * 100.0D) + "%", ChatFormatting.RED));
+            out.add(new StatPart("PvP Resistance +" + fmt(AbilityScaling.masteryResistance(level) * 100.0D) + "%", ChatFormatting.BLUE));
+            return out;
+        }
+        int cooldownTicks = mc.player != null && mc.player.isCreative() ? 0 : AbilityScaling.cooldownTicks(id, level, skills);
+        out.add(new StatPart("Cooldown " + formatSeconds(cooldownTicks), ChatFormatting.YELLOW));
 
         // default stat triplet
         String durationText = "Duration " + formatSeconds(AbilityScaling.durationTicks(id, level, 1.0D));
@@ -470,10 +483,14 @@ public final class AbilityListWidget extends AbstractWidget {
             durationText = "Radius " + fmt(AbilityScaling.radius(id, level, 1.0D) + 1.0D);
         } else if (id.specialization() == AbilitySpecialization.BURST && id != AbilityId.BLOOD_BURST) {
             if (id == AbilityId.FIRE_BURST || id == AbilityId.ICE_BURST || id == AbilityId.POISON_BURST) {
-                durationText = "Projectiles " + (1 + Math.max(0, level * 2));
+                durationText = "Projectiles " + AbilityScaling.burstProjectiles(level, finalForm);
             } else if (id == AbilityId.FORCE_BURST) {
                 durationText = "Projectiles 1";
             }
+        }
+
+        if (id == AbilityId.ICE_PIERCE) {
+            durationText = "Projectiles " + AbilityScaling.pierceProjectiles(level);
         }
 
         if (durationText != null && !durationText.isEmpty()) {
@@ -505,6 +522,13 @@ public final class AbilityListWidget extends AbstractWidget {
 
     private static String pointText(int points) {
         return points + " Point" + (points == 1 ? "" : "s");
+    }
+
+    private int raisedTooltipY(List<Component> lines, int requestedY, int cutoffBottom) {
+        int lineCount = 0;
+        for (Component line : lines) lineCount += Math.max(1, mc.font.split(line, 220).size());
+        int height = lineCount * mc.font.lineHeight + 8;
+        return Math.max(4, Math.min(requestedY, cutoffBottom - height - 4));
     }
 
     private record StatPart(String text, ChatFormatting style) {}

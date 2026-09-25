@@ -14,24 +14,27 @@ import net.minecraft.world.phys.HitResult;
 import net.revilodev.aura.abilities.AbilityElement;
 import net.revilodev.aura.abilities.logic.AbilityLogic;
 import net.revilodev.aura.entity.ModEntities;
+import net.revilodev.aura.particle.ModParticles;
 
 // burst cube projectile
 public final class BurstCubeProjectile extends ThrowableProjectile {
     private static final EntityDataAccessor<Integer> ELEMENT = SynchedEntityData.defineId(BurstCubeProjectile.class, EntityDataSerializers.INT);
     private static final EntityDataAccessor<Float> DAMAGE = SynchedEntityData.defineId(BurstCubeProjectile.class, EntityDataSerializers.FLOAT);
     private static final EntityDataAccessor<Integer> DURATION = SynchedEntityData.defineId(BurstCubeProjectile.class, EntityDataSerializers.INT);
+    private static final EntityDataAccessor<Boolean> FINAL_FORM = SynchedEntityData.defineId(BurstCubeProjectile.class, EntityDataSerializers.BOOLEAN);
 
     public BurstCubeProjectile(EntityType<? extends BurstCubeProjectile> type, Level level) {
         super(type, level);
     }
 
-    public BurstCubeProjectile(Level level, LivingEntity owner, AbilityElement element, float damage, int duration) {
+    public BurstCubeProjectile(Level level, LivingEntity owner, AbilityElement element, float damage, int duration, boolean finalForm) {
         this(ModEntities.BURST_CUBE.get(), level);
         setOwner(owner);
         setPos(owner.getX(), owner.getEyeY() - 0.1D, owner.getZ());
         setElement(element);
         setDamage(damage);
         setDuration(duration);
+        setFinalForm(finalForm);
     }
 
     @Override
@@ -39,6 +42,7 @@ public final class BurstCubeProjectile extends ThrowableProjectile {
         builder.define(ELEMENT, AbilityElement.FIRE.ordinal());
         builder.define(DAMAGE, 1.0F);
         builder.define(DURATION, 40);
+        builder.define(FINAL_FORM, false);
     }
 
     @Override
@@ -51,10 +55,15 @@ public final class BurstCubeProjectile extends ThrowableProjectile {
         if (level() instanceof ServerLevel level) {
             var particle = switch (element()) {
                 case ICE -> net.minecraft.core.particles.ParticleTypes.SNOWFLAKE;
-                case POISON -> net.minecraft.core.particles.ParticleTypes.WITCH;
-                default -> net.minecraft.core.particles.ParticleTypes.FLAME;
+                case POISON -> finalForm() ? ModParticles.TOXIN.get() : ModParticles.POISON.get();
+                case LIGHTNING -> finalForm() ? ModParticles.PLASMA_BLAST.get() : ModParticles.LIGHTNING_STRIKE.get();
+                case FIRE -> finalForm() ? ModParticles.SOULFIRE.get() : ModParticles.FIRE.get();
+                default -> net.minecraft.core.particles.ParticleTypes.END_ROD;
             };
             level.sendParticles(particle, getX(), getY(), getZ(), 2, 0.03D, 0.03D, 0.03D, 0.001D);
+            if (finalForm() && element() == AbilityElement.FIRE) {
+                level.sendParticles(net.minecraft.core.particles.ParticleTypes.SOUL_FIRE_FLAME, getX(), getY(), getZ(), 1, 0.025D, 0.025D, 0.025D, 0.0D);
+            }
         }
     }
 
@@ -63,7 +72,7 @@ public final class BurstCubeProjectile extends ThrowableProjectile {
         super.onHitEntity(result);
         if (!(getOwner() instanceof ServerPlayer player)) return;
         if (result.getEntity() instanceof LivingEntity living) {
-            AbilityLogic.applyElementHit(player, element(), living, damage(), duration());
+            AbilityLogic.applyElementHit(player, element(), living, damage(), duration(), finalForm());
         }
         discard();
     }
@@ -106,5 +115,13 @@ public final class BurstCubeProjectile extends ThrowableProjectile {
 
     public void setDuration(int duration) {
         entityData.set(DURATION, Math.max(1, duration));
+    }
+
+    public boolean finalForm() {
+        return entityData.get(FINAL_FORM);
+    }
+
+    public void setFinalForm(boolean finalForm) {
+        entityData.set(FINAL_FORM, finalForm);
     }
 }

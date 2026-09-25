@@ -20,6 +20,10 @@ public final class SkillBalance {
         return level * SkillConfig.hasteBreakSpeedPerLevel();
     }
 
+    public static double blastResistance(int level) {
+        return clamp(level * SkillConfig.blastResistancePerLevel(), 0.0D, 0.95D);
+    }
+
     public static double resistance(int level) {
         return clamp(level * SkillConfig.resistancePerLevel(), 0.0D, 0.95D);
     }
@@ -42,6 +46,14 @@ public final class SkillBalance {
 
     public static double leapingBonus(int level) {
         return level * SkillConfig.leapingPerLevel();
+    }
+
+    public static double attackSpeed(int level) {
+        return level * SkillConfig.attackSpeedPerLevel();
+    }
+
+    public static double swimmingSpeed(int level) {
+        return clamp(level * SkillConfig.swimmingSpeedPerLevel(), 0.0D, 1.0D);
     }
 
     public static float regenHeartsPerSecond(int level) {
@@ -74,6 +86,10 @@ public final class SkillBalance {
 
     public static int fortuneBonus(int level) {
         return Math.max(0, level * SkillConfig.fortuneBonusPerLevel());
+    }
+
+    public static double luckOfTheSea(int level) {
+        return level * SkillConfig.luckOfTheSeaPerLevel();
     }
 
     private static double clamp(double v, double min, double max) {

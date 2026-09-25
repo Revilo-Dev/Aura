@@ -132,17 +132,19 @@ public final class AbilityDetailsPanel extends AbstractWidget {
         PlayerAbilities abilities = mc.player.getData(AbilitiesAttachments.PLAYER_ABILITIES.get());
         PlayerSkills skills = mc.player.getData(SkillsAttachments.PLAYER_SKILLS.get());
         boolean editLocked = CodexAttributes.isAbilitySkillEditLocked(mc.player);
+        boolean creative = mc.player.isCreative();
         boolean affinityLocked = AbilityConfig.affinityLocked(abilities, ability.id());
         int level = abilities.rank(ability.id());
         int displayLevel = ability.type() == net.revilodev.aura.abilities.AbilityNodeType.SPECIALIZATION
                 ? abilities.rank(ability.id().core())
                 : level;
-        boolean canUp = !editLocked && !affinityLocked && !AuraClientConfig.blockUpgradeDowngrade() && abilities.canUpgrade(ability.id());
+        boolean canUp = !editLocked && !affinityLocked && !AuraClientConfig.blockUpgradeDowngrade() && abilities.canUpgrade(ability.id(), creative);
         boolean canDown = !editLocked && !AuraClientConfig.blockUpgradeDowngrade() && abilities.canDowngrade(ability.id());
         boolean specialization = ability.type() == net.revilodev.aura.abilities.AbilityNodeType.SPECIALIZATION;
+        boolean finalForm = AbilityConfig.ultimateAbilitiesEnabled() && abilities.rank(ability.id().core()) >= ability.id().core().maxRank();
 
-        gg.blit(ability.iconTexture(), x + 3, y + 4, 0, 0, HEADER_ICON_SIZE, HEADER_ICON_SIZE, HEADER_ICON_SIZE, HEADER_ICON_SIZE);
-        drawScaledText(gg, ability.title(), x + 17, y + 5, 0xFFFFFF, HEADER_TEXT_SCALE);
+        gg.blit(ability.id().iconTexture(finalForm), x + 3, y + 4, 0, 0, HEADER_ICON_SIZE, HEADER_ICON_SIZE, HEADER_ICON_SIZE, HEADER_ICON_SIZE);
+        drawScaledText(gg, ability.id().title(finalForm), x + 17, y + 5, 0xFFFFFF, HEADER_TEXT_SCALE);
         drawScaledText(gg, "level: " + displayLevel + "/" + ability.id().core().maxRank(), x + 17, y + 11, 0xD0D0D0, HEADER_TEXT_SCALE);
 
         List<AbilityId> abilityConflicts = AbilityKeybinds.conflictingAbilities(ability.id());
@@ -170,16 +172,16 @@ public final class AbilityDetailsPanel extends AbstractWidget {
         int viewportTop = y + CONTENT_TOP + contentTopOffset;
         int viewportBottom = y + height - CONTENT_BOTTOM_PADDING;
         int viewportHeight = Math.max(0, viewportBottom - viewportTop);
-        contentHeight = measureContentHeight(ability, Math.max(1, level), skills);
+        contentHeight = measureContentHeight(ability, Math.max(1, level), skills, finalForm);
         int maxScroll = Math.max(0, contentHeight - viewportHeight);
         scrollY = Mth.clamp(scrollY, 0.0F, maxScroll);
 
         gg.enableScissor(x + 2, viewportTop, x + w - 2, viewportBottom);
         int textY = viewportTop - Mth.floor(scrollY);
-        textY = drawSmallWrapped(gg, ability.description(), x + 4, textY, w - 8, 0xE2E2E2) + 3;
+        textY = drawSmallWrapped(gg, ability.id().description(finalForm), x + 4, textY, w - 8, 0xE2E2E2) + 3;
         int scaledWidth = Math.max(1, Mth.floor((w - 8) / SMALL_TEXT_SCALE));
-        if (specialization) {
-            drawAbilityStatLine(gg, x + 4, textY, scaledWidth, ability.id(), Math.max(1, displayLevel), skills);
+        if (specialization || ability.id().isCore()) {
+            drawAbilityStatLine(gg, x + 4, textY, scaledWidth, ability.id(), Math.max(1, displayLevel), skills, finalForm);
         }
         gg.disableScissor();
 
@@ -193,7 +195,7 @@ public final class AbilityDetailsPanel extends AbstractWidget {
         downgrade.visible = !specialization;
         select.visible = specialization;
         select.active = specialization && !editLocked && !affinityLocked
-                && (!AbilityConfig.switchCooldownsEnabled() || abilities.switchCooldownTicks(ability.id()) <= 0)
+                && (creative || !AbilityConfig.switchCooldownsEnabled() || abilities.switchCooldownTicks(ability.id()) <= 0)
                 && !AuraClientConfig.blockAbilitySwitching();
     }
 
@@ -225,17 +227,17 @@ public final class AbilityDetailsPanel extends AbstractWidget {
     @Override
     protected void updateWidgetNarration(NarrationElementOutput narration) {}
 
-    private int measureContentHeight(AbilityDefinition ability, int level, PlayerSkills skills) {
+    private int measureContentHeight(AbilityDefinition ability, int level, PlayerSkills skills, boolean finalForm) {
         int scaledWidth = Math.max(1, Mth.floor((width - 8) / SMALL_TEXT_SCALE));
-        int lines = mc.font.split(Component.literal(ability.description()), scaledWidth).size();
-        if (ability.type() == net.revilodev.aura.abilities.AbilityNodeType.SPECIALIZATION) {
-            lines += mc.font.split(Component.literal(abilityStatText(ability.id(), level, skills)), scaledWidth).size();
+        int lines = mc.font.split(Component.literal(ability.id().description(finalForm)), scaledWidth).size();
+        if (ability.type() == net.revilodev.aura.abilities.AbilityNodeType.SPECIALIZATION || ability.id().isCore()) {
+            lines += mc.font.split(Component.literal(abilityStatText(ability.id(), level, skills, finalForm)), scaledWidth).size();
         }
         return lines * SMALL_LINE_STEP;
     }
 
-    private void drawAbilityStatLine(GuiGraphics gg, int x, int y, int scaledWidth, AbilityId id, int level, PlayerSkills skills) {
-        List<StatPart> parts = statParts(id, level, skills);
+    private void drawAbilityStatLine(GuiGraphics gg, int x, int y, int scaledWidth, AbilityId id, int level, PlayerSkills skills, boolean finalForm) {
+        List<StatPart> parts = statParts(id, level, skills, finalForm);
         gg.pose().pushPose();
         gg.pose().translate(x, y, 0.0F);
         gg.pose().scale(SMALL_TEXT_SCALE, SMALL_TEXT_SCALE, 1.0F);
@@ -252,14 +254,21 @@ public final class AbilityDetailsPanel extends AbstractWidget {
         gg.pose().popPose();
     }
 
-    private String abilityStatText(AbilityId id, int level, PlayerSkills skills) {
-        List<StatPart> parts = statParts(id, level, skills);
+    private String abilityStatText(AbilityId id, int level, PlayerSkills skills, boolean finalForm) {
+        List<StatPart> parts = statParts(id, level, skills, finalForm);
         return parts.stream().map(StatPart::text).reduce((a, b) -> a + " | " + b).orElse("");
     }
 
-    private List<StatPart> statParts(AbilityId id, int level, PlayerSkills skills) {
+    private List<StatPart> statParts(AbilityId id, int level, PlayerSkills skills, boolean finalForm) {
         List<StatPart> out = new ArrayList<>();
-        out.add(new StatPart("Cooldown " + formatSeconds(AbilityScaling.cooldownTicks(id, level, skills)), 0xF0D15C));
+        if (id.isCore()) {
+            String stat = id.element() == net.revilodev.aura.abilities.AbilityElement.WIND ? "Power" : "Damage";
+            out.add(new StatPart(stat + " +" + fmt(AbilityScaling.masteryDamageBonus(level) * 100.0D) + "%", 0xFF6A6A));
+            out.add(new StatPart("PvP Resistance +" + fmt(AbilityScaling.masteryResistance(level) * 100.0D) + "%", 0x6AB2FF));
+            return out;
+        }
+        int cooldownTicks = mc.player != null && mc.player.isCreative() ? 0 : AbilityScaling.cooldownTicks(id, level, skills);
+        out.add(new StatPart("Cooldown " + formatSeconds(cooldownTicks), 0xF0D15C));
 
         String durationText = "Duration " + formatSeconds(AbilityScaling.durationTicks(id, level, 1.0D));
         String thirdText = "DPS " + formatDps(AbilityScaling.damage(id, level, 1.0D), AbilityScaling.durationTicks(id, level, 1.0D));
@@ -292,17 +301,22 @@ public final class AbilityDetailsPanel extends AbstractWidget {
         } else if (id == AbilityId.FORCE_AEGIS) {
             thirdText = "Dmg Avoids " + Math.max(1, (int) Math.round(level));
         } else if (id.specialization() == AbilitySpecialization.NOVA) {
-            thirdText = "Radius " + fmt(AbilityScaling.radius(id, level, 1.0D) + 1.5D);
+            durationText = "Duration " + formatSeconds(AbilityScaling.auraDurationTicks(level, finalForm));
+            thirdText = "Radius " + fmt(AbilityScaling.auraRadius(level, finalForm));
         }
 
         if (id.specialization() == AbilitySpecialization.IMPLODE) {
             durationText = "Radius " + fmt(AbilityScaling.radius(id, level, 1.0D) + 1.0D);
         } else if (id.specialization() == AbilitySpecialization.BURST && id != AbilityId.BLOOD_BURST) {
             if (id == AbilityId.FIRE_BURST || id == AbilityId.ICE_BURST || id == AbilityId.POISON_BURST) {
-                durationText = "Projectiles " + (1 + Math.max(0, level * 2));
+                durationText = "Projectiles " + AbilityScaling.burstProjectiles(level, finalForm);
             } else if (id == AbilityId.FORCE_BURST) {
                 durationText = "Projectiles 1";
             }
+        }
+
+        if (id == AbilityId.ICE_PIERCE) {
+            durationText = "Projectiles " + AbilityScaling.pierceProjectiles(level);
         }
 
         if (durationText != null && !durationText.isEmpty()) {
