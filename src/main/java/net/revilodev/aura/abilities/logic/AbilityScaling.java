@@ -23,7 +23,8 @@ public final class AbilityScaling {
         double out = AbilityConfig.configuredCooldown(id);
         out -= (Math.max(1, rank) - 1) * 8.0D;
         out *= AbilityConfig.cooldownMultiplier();
-        return Math.max(10, (int) Math.round(out));
+        int minimum = id == AbilityId.FORCE_RAMPAGE ? 1800 : 10;
+        return Math.max(minimum, (int) Math.round(out));
     }
 
     public static float damage(AbilityId id, int coreRank, double abilityPower) {

@@ -35,7 +35,7 @@ public enum AbilityId {
     FORCE(AbilityElement.FORCE, null, AbilityNodeType.CORE, null, SkillId.RESISTANCE, 5, 0, "force"),
     FORCE_AEGIS(AbilityElement.FORCE, AbilitySpecialization.AEGIS, AbilityNodeType.SPECIALIZATION, FORCE, SkillId.RESISTANCE, 1, 260, "aegis"),
     FORCE_BURST(AbilityElement.FORCE, AbilitySpecialization.BURST, AbilityNodeType.SPECIALIZATION, FORCE_AEGIS, SkillId.RESISTANCE, 1, 180, "blast"),
-    FORCE_RAMPAGE(AbilityElement.FORCE, AbilitySpecialization.RAMPAGE, AbilityNodeType.SPECIALIZATION, FORCE_BURST, SkillId.RESISTANCE, 1, 300, "rampage"),
+    FORCE_RAMPAGE(AbilityElement.FORCE, AbilitySpecialization.RAMPAGE, AbilityNodeType.SPECIALIZATION, FORCE_BURST, SkillId.RESISTANCE, 1, 1800, "rampage"),
 
     BLOOD(AbilityElement.BLOOD, null, AbilityNodeType.CORE, null, SkillId.VITALITY, 4, 0, "blood"),
     BLOOD_HEAL(AbilityElement.BLOOD, AbilitySpecialization.STRIKE, AbilityNodeType.SPECIALIZATION, BLOOD, SkillId.VITALITY, 1, 180, "heal"),

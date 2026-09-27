@@ -46,6 +46,8 @@ public final class BurstCubeProjectileRenderer extends EntityRenderer<BurstCubeP
             } else {
                 r = 0.55F; g = 0.8F; b = 1.0F;
             }
+        } else if (element == AbilityElement.BLOOD) {
+            r = 0.75F; g = 0.05F; b = 0.1F;
         }
         VertexConsumer vc = buffer.getBuffer(RenderType.debugQuads());
         addCube(vc, poseStack, r, g, b, 1.0F);

@@ -64,7 +64,7 @@ public final class AbilityLogic {
         if (player.isCreative()) abilities.setCooldown(id, 0);
         else abilities.setCooldown(id, AbilityScaling.cooldownTicks(id, coreRank, skills));
         if (player.gameMode.isSurvival() && AbilityConfig.switchCooldownsEnabled()) {
-            abilities.setSwitchCooldownTicks(id, AbilityConfig.survivalSwitchCooldownTicks());
+            abilities.setSwitchCooldownTicks(id.core(), AbilityConfig.survivalSwitchCooldownTicks());
         }
         abilities.markUsed(id);
         player.awardStat(CodexStats.ABILITIES_USED);
@@ -157,19 +157,11 @@ public final class AbilityLogic {
     }
 
     private static boolean bloodBurst(ServerPlayer player, AbilityId id, int coreRank, double abilityPower, boolean finalForm) {
-        List<LivingEntity> targets = nearby(player, AbilityScaling.radius(id, coreRank, abilityPower) + 1.5D);
-        if (targets.isEmpty()) return false;
-
         float cost = Math.min(Math.max(0.0F, player.getHealth() - 1.0F), Math.max(1.0F, AbilityScaling.damage(id, coreRank, abilityPower)));
         if (cost <= 0.0F) return false;
 
         player.setHealth(player.getHealth() - cost);
-        for (LivingEntity target : targets) {
-            hurtWithAbility(player, target, AbilityElement.BLOOD, player.damageSources().magic(), cost);
-            if (finalForm) target.igniteForSeconds(10);
-        }
-        spawnNovaRing(player, AbilityScaling.radius(id, coreRank, abilityPower) + 1.5D, ParticleTypes.DAMAGE_INDICATOR);
-        fx(player, ParticleTypes.DAMAGE_INDICATOR, SoundEvents.GENERIC_EXPLODE.value());
+        launchBurstProjectiles(player, id, coreRank, cost, abilityPower, finalForm);
         return true;
     }
 
@@ -239,11 +231,16 @@ public final class AbilityLogic {
             return true;
         }
 
+        float damage = AbilityScaling.damage(id, coreRank, abilityPower) * (finalForm && id.element() == AbilityElement.FIRE ? 1.5F : 1.0F);
+        launchBurstProjectiles(player, id, coreRank, damage, abilityPower, finalForm);
+        return true;
+    }
+
+    private static void launchBurstProjectiles(ServerPlayer player, AbilityId id, int coreRank, float damage, double abilityPower, boolean finalForm) {
         int projectiles = AbilityScaling.burstProjectiles(coreRank, finalForm);
         double stepDeg = 15.0D;
         double half = (projectiles - 1) * 0.5D;
         Vec3 look = player.getLookAngle().normalize();
-        float damage = AbilityScaling.damage(id, coreRank, abilityPower) * (finalForm && id.element() == AbilityElement.FIRE ? 1.5F : 1.0F);
         int duration = AbilityScaling.durationTicks(id, coreRank, abilityPower);
         for (int i = 0; i < projectiles; i++) {
             double angle = (i - half) * stepDeg;
@@ -253,7 +250,6 @@ public final class AbilityLogic {
             player.level().addFreshEntity(projectile);
         }
         fx(player, particleForElement(id.element(), finalForm), SoundEvents.BLAZE_SHOOT);
-        return true;
     }
 
     private static boolean aura(ServerPlayer player, AbilityId id, int coreRank, double abilityPower, boolean finalForm) {
@@ -275,7 +271,8 @@ public final class AbilityLogic {
             applyElementHit(player, id.element(), target, AbilityScaling.damage(id, coreRank, abilityPower) * damageScale, AbilityScaling.durationTicks(id, coreRank, abilityPower), finalForm);
             if (id == AbilityId.LIGHTNING_IMPLODE && player.level() instanceof ServerLevel level) strikeLightning(level, target.getX(), target.getY(), target.getZ());
         }
-        fx(player, ParticleTypes.EXPLOSION, SoundEvents.GENERIC_EXPLODE.value());
+        fx(player, id.element() == AbilityElement.FIRE ? particleForElement(AbilityElement.FIRE, finalForm) : ParticleTypes.EXPLOSION,
+                SoundEvents.GENERIC_EXPLODE.value());
         return true;
     }
 
@@ -367,7 +364,8 @@ public final class AbilityLogic {
 
     private static boolean rampage(ServerPlayer player, AbilityId id, int coreRank, double abilityPower, boolean finalForm) {
         int duration = AbilityScaling.durationTicks(id, coreRank, abilityPower);
-        player.addEffect(new MobEffectInstance(CodexMobEffects.RAMPAGING, duration, Math.max(0, coreRank - (finalForm ? 0 : 1)), false, true, true));
+        player.addEffect(new MobEffectInstance(finalForm ? CodexMobEffects.SINGULARITY_RAMPAGE : CodexMobEffects.RAMPAGING,
+                duration, Math.max(0, coreRank - (finalForm ? 0 : 1)), false, true, true));
         fx(player, ParticleTypes.ANGRY_VILLAGER, SoundEvents.RAID_HORN.value());
         return true;
     }
@@ -423,7 +421,9 @@ public final class AbilityLogic {
                 }
             }
             case FORCE -> pullToward(target, player, 0.6D);
-            case BLOOD -> {}
+            case BLOOD -> {
+                if (finalForm) target.igniteForSeconds(10);
+            }
             case WIND -> pullToward(target, player, 0.65D);
         }
     }
@@ -577,9 +577,12 @@ public final class AbilityLogic {
         int active = abilities.activeTicks(id);
         boolean finalForm = isFinalForm(abilities, id);
         Vec3 center = player.position().add(0.0D, 4.2D, 0.0D);
-        level.sendParticles(ParticleTypes.CLOUD, center.x, center.y, center.z, 18, 1.35D, 0.25D, 1.35D, 0.015D);
+        level.sendParticles(ParticleTypes.CLOUD, center.x, center.y, center.z, 32, 2.1D, 0.35D, 2.1D, 0.015D);
         if (active % 2 == 0) {
-            spawnPulseRing(level, center, 1.8D + Math.sin(active * 0.18D) * 0.35D, particleForElement(id.element(), finalForm));
+            spawnPulseRing(level, center, 2.7D + Math.sin(active * 0.18D) * 0.45D, particleForElement(id.element(), finalForm));
+        }
+        if (active % 3 == 0) {
+            spawnStormPrecipitation(level, center, id.element(), finalForm);
         }
 
         if (active % 10 != 0) return;
@@ -605,6 +608,20 @@ public final class AbilityLogic {
         }
     }
 
+    private static void spawnStormPrecipitation(ServerLevel level, Vec3 center, AbilityElement element, boolean finalForm) {
+        double y = center.y - 0.4D;
+        if (element == AbilityElement.LIGHTNING) {
+            level.sendParticles(ParticleTypes.RAIN, center.x, y, center.z, 10, 2.0D, 0.1D, 2.0D, 0.02D);
+        } else if (element == AbilityElement.ICE) {
+            level.sendParticles(ParticleTypes.SNOWFLAKE, center.x, y, center.z, 8, 2.0D, 0.1D, 2.0D, 0.02D);
+            level.sendParticles(ModParticles.ICICLE.get(), center.x, y, center.z, 5, 2.0D, 0.1D, 2.0D, 0.02D);
+        } else if (element == AbilityElement.FIRE) {
+            level.sendParticles(ParticleTypes.FALLING_LAVA, center.x, y, center.z, 6, 2.0D, 0.1D, 2.0D, 0.02D);
+            level.sendParticles(finalForm ? ModParticles.SOUL_FIRE_EMBER.get() : ModParticles.FIRE_EMBER.get(),
+                    center.x, y, center.z, 8, 2.0D, 0.1D, 2.0D, 0.02D);
+        }
+    }
+
     private static ParticleOptions particleForElement(AbilityElement element, boolean finalForm) {
         return switch (element) {
             case ICE -> ParticleTypes.SNOWFLAKE;
@@ -613,7 +630,7 @@ public final class AbilityLogic {
             case FORCE -> finalForm ? ParticleTypes.REVERSE_PORTAL : ParticleTypes.CRIT;
             case BLOOD -> ParticleTypes.DAMAGE_INDICATOR;
             case WIND -> finalForm ? ParticleTypes.GUST : ParticleTypes.CLOUD;
-            case FIRE -> finalForm ? ModParticles.SOULFIRE.get() : ModParticles.FIRE.get();
+            case FIRE -> finalForm ? ModParticles.SOUL_FIRE_EMBER.get() : ModParticles.FIRE_EMBER.get();
         };
     }
 

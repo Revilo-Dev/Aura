@@ -195,7 +195,7 @@ public final class AbilityDetailsPanel extends AbstractWidget {
         downgrade.visible = !specialization;
         select.visible = specialization;
         select.active = specialization && !editLocked && !affinityLocked
-                && (creative || !AbilityConfig.switchCooldownsEnabled() || abilities.switchCooldownTicks(ability.id()) <= 0)
+                && (creative || !AbilityConfig.switchCooldownsEnabled() || abilities.switchCooldownTicks(ability.id().core()) <= 0)
                 && !AuraClientConfig.blockAbilitySwitching();
     }
 
@@ -290,7 +290,7 @@ public final class AbilityDetailsPanel extends AbstractWidget {
         } else if (id == AbilityId.BLOOD_BURST) {
             double cost = AbilityScaling.damage(id, level, 1.0D);
             durationText = "Health Cost " + fmt(cost);
-            thirdText = "Damage " + fmt(cost);
+            thirdText = "Damage " + fmt(cost) + " x" + AbilityScaling.burstProjectiles(level, finalForm);
         } else if (id == AbilityId.BLOOD_DRAIN) {
             durationText = "Duration " + formatSeconds(AbilityScaling.durationTicks(id, level, 1.0D));
             thirdText = "Drain " + fmt(Math.max(1.0D, AbilityScaling.damage(id, level, 1.0D) * 0.35D)) + "/0.5s";

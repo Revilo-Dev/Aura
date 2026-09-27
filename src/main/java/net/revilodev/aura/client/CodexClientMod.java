@@ -8,6 +8,7 @@ import net.neoforged.neoforge.client.event.EntityRenderersEvent;
 import net.neoforged.neoforge.client.event.RenderGuiEvent;
 import net.neoforged.neoforge.client.event.RegisterParticleProvidersEvent;
 import net.minecraft.client.particle.FlameParticle;
+import net.minecraft.client.particle.SnowflakeParticle;
 import net.neoforged.neoforge.common.NeoForge;
 import net.revilodev.aura.client.abilities.AbilityHudOverlay;
 import net.revilodev.aura.client.abilities.AbilityKeybinds;
@@ -47,5 +48,8 @@ public final class CodexClientMod {
         event.registerSpriteSet(ModParticles.LIGHTNING_STRIKE.get(), FlameParticle.Provider::new);
         event.registerSpriteSet(ModParticles.PLASMA_STRIKE.get(), FlameParticle.Provider::new);
         event.registerSpriteSet(ModParticles.PLASMA_BLAST.get(), FlameParticle.Provider::new);
+        event.registerSpriteSet(ModParticles.FIRE_EMBER.get(), SnowflakeParticle.Provider::new);
+        event.registerSpriteSet(ModParticles.SOUL_FIRE_EMBER.get(), SnowflakeParticle.Provider::new);
+        event.registerSpriteSet(ModParticles.ICICLE.get(), SnowflakeParticle.Provider::new);
     }
 }

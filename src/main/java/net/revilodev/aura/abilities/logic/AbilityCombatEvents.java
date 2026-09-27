@@ -59,7 +59,7 @@ public final class AbilityCombatEvents {
             return;
         }
 
-        if (AbilityLogic.isFinalForm(abilities, AbilityId.FORCE_RAMPAGE) && target.hasEffect(CodexMobEffects.RAMPAGING)) {
+        if (target.hasEffect(CodexMobEffects.SINGULARITY_RAMPAGE)) {
             DEFERRED_RAMPAGE_DAMAGE.merge(target.getUUID(), event.getAmount(), Float::sum);
             event.setAmount(0.0F);
         }
@@ -72,7 +72,7 @@ public final class AbilityCombatEvents {
             DEFERRED_RAMPAGE_DAMAGE.remove(player.getUUID());
             return;
         }
-        if (player.hasEffect(CodexMobEffects.RAMPAGING)) return;
+        if (player.hasEffect(CodexMobEffects.SINGULARITY_RAMPAGE)) return;
 
         DEFERRED_RAMPAGE_DAMAGE.remove(player.getUUID());
         player.setHealth(Math.max(1.0F, player.getHealth() - damage));

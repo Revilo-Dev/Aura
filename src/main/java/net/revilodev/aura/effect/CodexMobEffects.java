@@ -45,6 +45,24 @@ public final class CodexMobEffects {
                                 int speedAmp = Math.min(2, coreRank / 3);
                                 return 0.2D * (speedAmp + 1);
                             }));
+    public static final Holder<MobEffect> SINGULARITY_RAMPAGE = REGISTER.register("singularity_rampage", () ->
+            new RampagingEffect()
+                    .addAttributeModifier(Attributes.ATTACK_DAMAGE,
+                            ResourceLocation.fromNamespaceAndPath(CodexMod.MOD_ID, "singularity_rampage_attack_damage"),
+                            AttributeModifier.Operation.ADD_VALUE,
+                            amplifier -> {
+                                int coreRank = amplifier + 1;
+                                int strengthAmp = Math.min(4, coreRank / 2);
+                                return 3.0D * (strengthAmp + 1);
+                            })
+                    .addAttributeModifier(Attributes.MOVEMENT_SPEED,
+                            ResourceLocation.fromNamespaceAndPath(CodexMod.MOD_ID, "singularity_rampage_move_speed"),
+                            AttributeModifier.Operation.ADD_MULTIPLIED_TOTAL,
+                            amplifier -> {
+                                int coreRank = amplifier + 1;
+                                int speedAmp = Math.min(2, coreRank / 3);
+                                return 0.2D * (speedAmp + 1);
+                            }));
 
     private CodexMobEffects() {}
 

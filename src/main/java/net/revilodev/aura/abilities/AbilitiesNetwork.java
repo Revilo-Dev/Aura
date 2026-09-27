@@ -72,7 +72,7 @@ public final class AbilitiesNetwork {
         if (player == null || abilities == null || target == null || !target.isSpecialization()) return false;
         if (AbilityConfig.affinityLocked(abilities, target)) return false;
         if (AbilityLogic.effectiveCoreRank(player, abilities, target) <= 0) return false;
-        if (!player.isCreative() && AbilityConfig.switchCooldownsEnabled() && abilities.switchCooldownTicks(target) > 0) return false;
+        if (!player.isCreative() && AbilityConfig.switchCooldownsEnabled() && abilities.switchCooldownTicks(target.core()) > 0) return false;
 
         AbilityId current = abilities.selectedSpecialization(target.element());
         if (current == target) return false;

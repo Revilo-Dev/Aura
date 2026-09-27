@@ -57,13 +57,11 @@ public final class BurstCubeProjectile extends ThrowableProjectile {
                 case ICE -> net.minecraft.core.particles.ParticleTypes.SNOWFLAKE;
                 case POISON -> finalForm() ? ModParticles.TOXIN.get() : ModParticles.POISON.get();
                 case LIGHTNING -> finalForm() ? ModParticles.PLASMA_BLAST.get() : ModParticles.LIGHTNING_STRIKE.get();
-                case FIRE -> finalForm() ? ModParticles.SOULFIRE.get() : ModParticles.FIRE.get();
+                case FIRE -> finalForm() ? ModParticles.SOUL_FIRE_EMBER.get() : ModParticles.FIRE_EMBER.get();
+                case BLOOD -> net.minecraft.core.particles.ParticleTypes.DAMAGE_INDICATOR;
                 default -> net.minecraft.core.particles.ParticleTypes.END_ROD;
             };
             level.sendParticles(particle, getX(), getY(), getZ(), 2, 0.03D, 0.03D, 0.03D, 0.001D);
-            if (finalForm() && element() == AbilityElement.FIRE) {
-                level.sendParticles(net.minecraft.core.particles.ParticleTypes.SOUL_FIRE_FLAME, getX(), getY(), getZ(), 1, 0.025D, 0.025D, 0.025D, 0.0D);
-            }
         }
     }
 

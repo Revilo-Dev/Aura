@@ -255,7 +255,7 @@ public final class AbilityListWidget extends AbstractWidget {
             boolean isSelectedSpecialization = specialization && def.id() == selectedSpec;
             boolean configEnabled = AuraClientConfig.abilityEnabled(def.id());
             boolean affinityLocked = AbilityConfig.affinityLocked(abilities, def.id());
-            int switchCooldown = abilities.switchCooldownTicks(def.id());
+            int switchCooldown = abilities.switchCooldownTicks(def.id().core());
 
             ResourceLocation tex;
             if (!configEnabled || affinityLocked) {
@@ -279,7 +279,7 @@ public final class AbilityListWidget extends AbstractWidget {
             if (affinityLocked) {
                 gg.blit(LOCKED_TEX, x + 3, y + 3, 0, 0, 16, 16, 16, 16);
             }
-            if (!creative && specialization && AbilityConfig.switchCooldownsEnabled() && switchCooldown > 0) {
+            if (!creative && primary && AbilityConfig.switchCooldownsEnabled() && switchCooldown > 0) {
                 gg.fill(x + 2, y + 2, x + CELL_SIZE - 2, y + CELL_SIZE - 2, 0xA0000000);
                 String remaining = ((switchCooldown + 19) / 20) + "s";
                 int textX = x + (CELL_SIZE - mc.font.width(remaining)) / 2;
@@ -465,7 +465,7 @@ public final class AbilityListWidget extends AbstractWidget {
         } else if (id == AbilityId.BLOOD_BURST) {
             double cost = AbilityScaling.damage(id, level, 1.0D);
             durationText = "Health Cost " + fmt(cost);
-            thirdText = "Damage " + fmt(cost);
+            thirdText = "Damage " + fmt(cost) + " x" + AbilityScaling.burstProjectiles(level, finalForm);
         } else if (id == AbilityId.BLOOD_DRAIN) {
             durationText = "Duration " + formatSeconds(AbilityScaling.durationTicks(id, level, 1.0D));
             thirdText = "Drain " + fmt(Math.max(1.0D, AbilityScaling.damage(id, level, 1.0D) * 0.35D)) + "/0.5s";
