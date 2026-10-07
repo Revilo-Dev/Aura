@@ -11,6 +11,7 @@ public final class AbilityConfig {
 
     private static final ModConfigSpec.IntValue POINT_INTERVAL_LEVELS;
     private static final ModConfigSpec.BooleanValue ENABLE_ABILITIES;
+    private static final ModConfigSpec.BooleanValue ENABLE_ABILITY_XP_CONSUMPTION;
     private static final ModConfigSpec.BooleanValue ENABLE_ULTIMATE_ABILITIES;
     private static final ModConfigSpec.DoubleValue COOLDOWN_MULTIPLIER;
     private static final ModConfigSpec.DoubleValue PRIMARY_SCALING_MULTIPLIER;
@@ -42,6 +43,7 @@ public final class AbilityConfig {
 
         builder.push("general");
         ENABLE_ABILITIES = builder.define("enableAbilities", true);
+        ENABLE_ABILITY_XP_CONSUMPTION = builder.define("enableAbilityXpConsumption", true);
         ENABLE_ULTIMATE_ABILITIES = builder.define("enableUltimateAbilities", true);
         COOLDOWN_MULTIPLIER = builder.defineInRange("cooldownMultiplier", 1.0D, 0.1D, 5.0D);
         PRIMARY_SCALING_MULTIPLIER = builder.defineInRange("primaryScalingMultiplier", 1.0D, 0.0D, 5.0D);
@@ -112,6 +114,14 @@ public final class AbilityConfig {
     public static boolean abilitiesEnabled() {
         if (!configLoaded) return true;
         return ENABLE_ABILITIES.get();
+    }
+
+    public static boolean abilityXpConsumptionEnabled() {
+        return configLoaded && ENABLE_ABILITY_XP_CONSUMPTION.get();
+    }
+
+    public static int abilityXpCost(int abilityRank) {
+        return 30 + Math.max(0, abilityRank - 1) * 5;
     }
 
     public static boolean ultimateAbilitiesEnabled() {
@@ -188,8 +198,9 @@ public final class AbilityConfig {
     public static int requiredAffinityLevel(AbilityId id) {
         if (id == null || id.isCore()) return 0;
         return switch (id) {
-            case FIRE_IMPLODE, ICE_IMPLODE, LIGHTNING_IMPLODE, POISON_IMPLODE, ICE_PIERCE, LIGHTNING_STRIKE -> 2;
+            case FIRE_IMPLODE, ICE_IMPLODE, LIGHTNING_IMPLODE, POISON_IMPLODE, ICE_PIERCE, LIGHTNING_STRIKE, FORCE_BURST -> 2;
             case BLOOD_BURST -> 3;
+            case FORCE_SHOCKWAVE -> 3;
             case FIRE_STORM, ICE_STORM, LIGHTNING_STORM -> 5;
             case FORCE_RAMPAGE -> 5;
             case BLOOD_DRAIN -> 4;
@@ -241,8 +252,9 @@ public final class AbilityConfig {
 
     private static int defaultAffinityLevel(AbilityId id) {
         return switch (id) {
-            case FIRE_IMPLODE, ICE_IMPLODE, LIGHTNING_IMPLODE, POISON_IMPLODE, ICE_PIERCE, LIGHTNING_STRIKE -> 2;
+            case FIRE_IMPLODE, ICE_IMPLODE, LIGHTNING_IMPLODE, POISON_IMPLODE, ICE_PIERCE, LIGHTNING_STRIKE, FORCE_BURST -> 2;
             case BLOOD_BURST -> 3;
+            case FORCE_SHOCKWAVE -> 3;
             case ICE, LIGHTNING -> 4;
             case FIRE_STORM, ICE_STORM, LIGHTNING_STORM -> 5;
             case FORCE_RAMPAGE -> 5;

@@ -8,6 +8,7 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
+import net.minecraft.util.Mth;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.damagesource.DamageSource;
@@ -34,12 +35,15 @@ import net.revilodev.aura.particle.ModParticles;
 
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 public final class AbilityLogic {
     private static final Map<UUID, UUID> BLOOD_DRAIN_TARGETS = new HashMap<>();
+    private static final Map<UUID, ShockwaveState> FORCE_SHOCKWAVES = new HashMap<>();
     private static final ThreadLocal<AbilityElement> DAMAGE_ELEMENT = new ThreadLocal<>();
     private static final ThreadLocal<ServerPlayer> DAMAGE_ATTACKER = new ThreadLocal<>();
 
@@ -53,6 +57,8 @@ public final class AbilityLogic {
         int effectiveCoreRank = effectiveCoreRank(player, abilities, id);
         if (!AbilityConfig.enabled(id) || AbilityConfig.affinityLocked(abilities, id) || effectiveCoreRank <= 0
                 || (!player.isCreative() && abilities.cooldownTicks(id) > 0)) return false;
+        int xpCost = AbilityConfig.abilityXpCost(effectiveRank);
+        if (!player.isCreative() && AbilityConfig.abilityXpConsumptionEnabled() && availableExperience(player) < xpCost) return false;
 
         double abilityPower = CodexAttributes.abilityPower(player, id);
         AbilityUseEvent.Pre preEvent = new AbilityUseEvent.Pre(player, id, effectiveRank, skills, abilityPower);
@@ -61,6 +67,7 @@ public final class AbilityLogic {
         int coreRank = Math.max(1, effectiveCoreRank);
         boolean finalForm = isFinalForm(abilities, id);
         if (!execute(player, id, coreRank, preEvent.getAbilityPower(), finalForm)) return false;
+        if (!player.isCreative() && AbilityConfig.abilityXpConsumptionEnabled()) player.giveExperiencePoints(-xpCost);
         if (player.isCreative()) abilities.setCooldown(id, 0);
         else abilities.setCooldown(id, AbilityScaling.cooldownTicks(id, coreRank, skills));
         if (player.gameMode.isSurvival() && AbilityConfig.switchCooldownsEnabled()) {
@@ -71,6 +78,16 @@ public final class AbilityLogic {
         player.awardStat(CodexStats.abilityUse(id));
         NeoForge.EVENT_BUS.post(new AbilityUseEvent.Post(player, id, effectiveRank, skills, preEvent.getAbilityPower()));
         return true;
+    }
+
+    private static int availableExperience(ServerPlayer player) {
+        int level = player.experienceLevel;
+        int levelExperience = level <= 16
+                ? level * level + 6 * level
+                : level <= 31
+                        ? (int) (2.5D * level * level - 40.5D * level + 360.0D)
+                        : (int) (4.5D * level * level - 162.5D * level + 2220.0D);
+        return levelExperience + (int) (player.experienceProgress * player.getXpNeededForNextLevel());
     }
 
     public static int effectiveRank(ServerPlayer player, PlayerAbilities abilities, AbilityId id) {
@@ -110,6 +127,7 @@ public final class AbilityLogic {
         if (id == AbilityId.WIND_DASH) return windDash(player, id, coreRank, abilityPower, finalForm);
         if (id == AbilityId.WIND_LEAP) return windLeap(player, id, coreRank, abilityPower, finalForm);
         if (id == AbilityId.WIND_LUNGE) return windLunge(player, id, coreRank, abilityPower, finalForm);
+        if (id == AbilityId.FORCE_SHOCKWAVE) return forceShockwave(player, id, coreRank, abilityPower, finalForm);
         return switch (id.specialization()) {
             case BURST -> burst(player, id, coreRank, abilityPower, finalForm);
             case NOVA -> aura(player, id, coreRank, abilityPower, finalForm);
@@ -122,6 +140,7 @@ public final class AbilityLogic {
             case ZAP -> zap(player, id, coreRank, abilityPower, finalForm);
             case AEGIS -> aegis(player, id, coreRank, abilityPower, finalForm);
             case RAMPAGE -> rampage(player, id, coreRank, abilityPower, finalForm);
+            case SHOCKWAVE -> forceShockwave(player, id, coreRank, abilityPower, finalForm);
             case BASH -> bash(player, id, coreRank, abilityPower);
             default -> false;
         };
@@ -132,6 +151,10 @@ public final class AbilityLogic {
         if (finalForm) {
             player.addEffect(new MobEffectInstance(MobEffects.FIRE_RESISTANCE, 200, 0, false, true, true));
             for (LivingEntity target : nearby(player, 5.0D)) target.igniteForSeconds(10);
+            if (player.level() instanceof ServerLevel level) {
+                level.sendParticles(ModParticles.FIRE.get(), player.getX(), player.getY() + 0.9D, player.getZ(), 36, 0.7D, 0.8D, 0.7D, 0.12D);
+                level.sendParticles(ModParticles.SOULFIRE.get(), player.getX(), player.getY() + 0.9D, player.getZ(), 20, 0.55D, 0.65D, 0.55D, 0.09D);
+            }
         }
         fx(player, ParticleTypes.HEART, SoundEvents.AMETHYST_BLOCK_CHIME);
         return true;
@@ -236,6 +259,25 @@ public final class AbilityLogic {
         return true;
     }
 
+    private static boolean forceShockwave(ServerPlayer player, AbilityId id, int coreRank, double abilityPower, boolean finalForm) {
+        Vec3 origin = player.position().add(0.0D, 0.2D, 0.0D);
+        Vec3 forward = player.getLookAngle().multiply(1.0D, 0.0D, 1.0D).normalize();
+        if (forward.lengthSqr() < 1.0E-6D) return false;
+
+        double distance = AbilityScaling.shockwaveDistance(coreRank, abilityPower, finalForm);
+        double width = AbilityScaling.radius(id, coreRank, abilityPower) * (finalForm ? 1.25D : 1.0D);
+        int waveCount = Math.max(1, coreRank);
+        int waveDuration = AbilityScaling.shockwaveDurationTicks(coreRank, finalForm);
+        int totalDuration = waveDuration + (waveCount - 1) * 4;
+        FORCE_SHOCKWAVES.put(player.getUUID(), new ShockwaveState(origin, forward, coreRank, abilityPower, finalForm,
+                distance, width, waveCount, waveDuration, totalDuration, new HashSet<>()));
+        player.getData(AbilitiesAttachments.PLAYER_ABILITIES.get()).setActiveTicks(id, totalDuration);
+        if (player.level() instanceof ServerLevel level) {
+            level.playSound(null, player.blockPosition(), SoundEvents.BREEZE_WIND_CHARGE_BURST.value(), SoundSource.PLAYERS, 0.9F, 0.8F);
+        }
+        return true;
+    }
+
     private static void launchBurstProjectiles(ServerPlayer player, AbilityId id, int coreRank, float damage, double abilityPower, boolean finalForm) {
         int projectiles = AbilityScaling.burstProjectiles(coreRank, finalForm);
         double stepDeg = 15.0D;
@@ -271,8 +313,15 @@ public final class AbilityLogic {
             applyElementHit(player, id.element(), target, AbilityScaling.damage(id, coreRank, abilityPower) * damageScale, AbilityScaling.durationTicks(id, coreRank, abilityPower), finalForm);
             if (id == AbilityId.LIGHTNING_IMPLODE && player.level() instanceof ServerLevel level) strikeLightning(level, target.getX(), target.getY(), target.getZ());
         }
-        fx(player, id.element() == AbilityElement.FIRE ? particleForElement(AbilityElement.FIRE, finalForm) : ParticleTypes.EXPLOSION,
-                SoundEvents.GENERIC_EXPLODE.value());
+        if (id == AbilityId.POISON_IMPLODE && player.level() instanceof ServerLevel level) {
+            ParticleOptions poisonParticle = finalForm ? ModParticles.TOXIN.get() : ModParticles.POISON.get();
+            level.sendParticles(poisonParticle, player.getX(), player.getY() + 0.8D, player.getZ(), 48, 0.9D, 0.75D, 0.9D, 0.14D);
+        }
+        ParticleOptions implosionParticle = switch (id.element()) {
+            case FIRE, POISON -> particleForElement(id.element(), finalForm);
+            default -> ParticleTypes.EXPLOSION;
+        };
+        fx(player, implosionParticle, SoundEvents.GENERIC_EXPLODE.value());
         return true;
     }
 
@@ -496,12 +545,72 @@ public final class AbilityLogic {
                 tickAura(player, id, abilities);
             } else if (id == AbilityId.BLOOD_DRAIN) {
                 tickBloodDrain(player, id, abilities, skills);
+            } else if (id == AbilityId.FORCE_SHOCKWAVE) {
+                tickForceShockwave(player, abilities);
             }
         }
         if (abilities.activeTicks(AbilityId.BLOOD_DRAIN) <= 0) {
             BLOOD_DRAIN_TARGETS.remove(player.getUUID());
         }
+        if (abilities.activeTicks(AbilityId.FORCE_SHOCKWAVE) <= 0) {
+            FORCE_SHOCKWAVES.remove(player.getUUID());
+        }
         AbilityCombatEvents.tickPlayer(player);
+    }
+
+    private static void tickForceShockwave(ServerPlayer player, PlayerAbilities abilities) {
+        if (!(player.level() instanceof ServerLevel level)) return;
+        ShockwaveState state = FORCE_SHOCKWAVES.get(player.getUUID());
+        if (state == null) {
+            abilities.setActiveTicks(AbilityId.FORCE_SHOCKWAVE, 0);
+            return;
+        }
+
+        int elapsed = state.totalDuration - abilities.activeTicks(AbilityId.FORCE_SHOCKWAVE) - 1;
+        Vec3 right = new Vec3(-state.forward.z, 0.0D, state.forward.x);
+        for (int wave = 0; wave < state.waveCount; wave++) {
+            int waveElapsed = elapsed - wave * 4;
+            if (waveElapsed < 0 || waveElapsed >= state.waveDuration) continue;
+
+            double progress = state.waveDuration <= 1 ? 1.0D : waveElapsed / (double) (state.waveDuration - 1);
+            double frontDistance = state.distance * progress;
+            double currentWidth = state.width * (0.25D + progress * 0.75D);
+            Vec3 center = state.origin.add(state.forward.scale(frontDistance));
+            spawnShockwaveArc(level, center, right, currentWidth, state.finalForm);
+
+            double band = Math.max(0.8D, state.distance / state.waveDuration * 1.4D);
+            for (LivingEntity target : nearby(player, state.distance + state.width)) {
+                ShockwaveHit hit = new ShockwaveHit(wave, target.getUUID());
+                if (state.hits.contains(hit)) continue;
+                Vec3 offset = target.getBoundingBox().getCenter().subtract(state.origin);
+                double forwardDistance = offset.dot(state.forward);
+                if (Math.abs(forwardDistance - frontDistance) > band) continue;
+                double lateralDistance = Math.abs(offset.dot(right));
+                if (lateralDistance > currentWidth + target.getBbWidth() * 0.5D) continue;
+
+                double falloff = Math.max(0.25D, 1.0D - 0.7D * Mth.clamp(forwardDistance / state.distance, 0.0D, 1.0D));
+                float damage = AbilityScaling.damage(AbilityId.FORCE_SHOCKWAVE, state.coreRank, state.abilityPower)
+                        * (float) falloff * (state.finalForm ? 1.5F : 1.0F);
+                double push = (0.7D + state.coreRank * 0.08D) * powerScale(state.abilityPower)
+                        * falloff * (state.finalForm ? 1.4D : 1.0D);
+                hurtWithAbility(player, target, AbilityElement.FORCE, player.damageSources().magic(), damage);
+                pushAwayFrom(player, target, push);
+                state.hits.add(hit);
+            }
+        }
+    }
+
+    private static void spawnShockwaveArc(ServerLevel level, Vec3 center, Vec3 right, double width, boolean finalForm) {
+        int points = Math.max(7, (int) Math.ceil(width * 3.0D));
+        ParticleOptions primary = finalForm ? ParticleTypes.REVERSE_PORTAL : ParticleTypes.POOF;
+        for (int point = 0; point < points; point++) {
+            double offset = points == 1 ? 0.0D : Mth.lerp(point / (double) (points - 1), -width, width);
+            Vec3 position = center.add(right.scale(offset)).add(0.0D, Math.sin(point * 0.8D) * 0.08D, 0.0D);
+            level.sendParticles(primary, position.x, position.y, position.z, 1, 0.04D, 0.025D, 0.04D, 0.0D);
+            if ((point & 1) == 0) {
+                level.sendParticles(ParticleTypes.CRIT, position.x, position.y + 0.08D, position.z, 1, 0.02D, 0.01D, 0.02D, 0.0D);
+            }
+        }
     }
 
     private static void tickAura(ServerPlayer player, AbilityId id, PlayerAbilities abilities) {
@@ -776,6 +885,38 @@ public final class AbilityLogic {
 
     private static double powerScale(double abilityPower) {
         return 0.85D + (Math.max(0.0D, abilityPower) * 0.15D);
+    }
+
+    private record ShockwaveHit(int wave, UUID targetId) {}
+
+    private static final class ShockwaveState {
+        private final Vec3 origin;
+        private final Vec3 forward;
+        private final int coreRank;
+        private final double abilityPower;
+        private final boolean finalForm;
+        private final double distance;
+        private final double width;
+        private final int waveCount;
+        private final int waveDuration;
+        private final int totalDuration;
+        private final Set<ShockwaveHit> hits;
+
+        private ShockwaveState(Vec3 origin, Vec3 forward, int coreRank, double abilityPower, boolean finalForm,
+                               double distance, double width, int waveCount, int waveDuration, int totalDuration,
+                               Set<ShockwaveHit> hits) {
+            this.origin = origin;
+            this.forward = forward;
+            this.coreRank = coreRank;
+            this.abilityPower = abilityPower;
+            this.finalForm = finalForm;
+            this.distance = distance;
+            this.width = width;
+            this.waveCount = waveCount;
+            this.waveDuration = waveDuration;
+            this.totalDuration = totalDuration;
+            this.hits = hits;
+        }
     }
 
     private static boolean hurtWithAbility(ServerPlayer player, LivingEntity target, AbilityElement element, DamageSource source, float damage) {

@@ -13,6 +13,7 @@ import net.neoforged.neoforge.common.NeoForge;
 import net.revilodev.aura.client.abilities.AbilityHudOverlay;
 import net.revilodev.aura.client.abilities.AbilityKeybinds;
 import net.revilodev.aura.client.abilities.BurstCubeProjectileRenderer;
+import net.revilodev.aura.client.particle.IcicleParticle;
 import net.revilodev.aura.CodexMod;
 import net.revilodev.aura.client.skills.SkillsPanelClient;
 import net.revilodev.aura.client.toast.LevelUpToast;
@@ -50,6 +51,6 @@ public final class CodexClientMod {
         event.registerSpriteSet(ModParticles.PLASMA_BLAST.get(), FlameParticle.Provider::new);
         event.registerSpriteSet(ModParticles.FIRE_EMBER.get(), SnowflakeParticle.Provider::new);
         event.registerSpriteSet(ModParticles.SOUL_FIRE_EMBER.get(), SnowflakeParticle.Provider::new);
-        event.registerSpriteSet(ModParticles.ICICLE.get(), SnowflakeParticle.Provider::new);
+        event.registerSpriteSet(ModParticles.ICICLE.get(), IcicleParticle.Provider::new);
     }
 }

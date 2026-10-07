@@ -228,6 +228,7 @@ public final class AbilityKeybinds {
 
         addElementShared(AbilityId.FORCE_AEGIS, "force", InputConstants.KEY_B);
         addElementShared(AbilityId.FORCE_BURST, "force", InputConstants.KEY_B);
+        addElementShared(AbilityId.FORCE_SHOCKWAVE, "force", InputConstants.KEY_B);
         addElementShared(AbilityId.FORCE_RAMPAGE, "force", InputConstants.KEY_B);
 
         addElementShared(AbilityId.BLOOD_HEAL, "blood", InputConstants.KEY_N);

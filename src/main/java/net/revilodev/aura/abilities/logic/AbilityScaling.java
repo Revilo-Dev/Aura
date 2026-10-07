@@ -37,6 +37,15 @@ public final class AbilityScaling {
         return base * (0.85D + (Math.max(0.0D, abilityPower) * 0.15D));
     }
 
+    public static double shockwaveDistance(int coreRank, double abilityPower, boolean finalForm) {
+        double base = 5.0D + Math.max(0, coreRank - 1) * 1.25D;
+        return base * (0.85D + Math.max(0.0D, abilityPower) * 0.15D) + (finalForm ? 2.0D : 0.0D);
+    }
+
+    public static int shockwaveDurationTicks(int coreRank, boolean finalForm) {
+        return 10 + Math.max(0, coreRank - 1) * 2 + (finalForm ? 4 : 0);
+    }
+
     public static int durationTicks(AbilityId id, int coreRank, double abilityPower) {
         double base = AbilityConfig.durationTicks(id) * (1.0D + (Math.max(1, coreRank) - 1) * 0.1D * AbilityConfig.primaryScalingMultiplier());
         return Math.max(1, (int) Math.round(base * (0.85D + (Math.max(0.0D, abilityPower) * 0.15D))));

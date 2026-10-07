@@ -21,6 +21,8 @@ public final class CodexPotions {
             () -> new Potion("ability_power", new MobEffectInstance(CodexMobEffects.ABILITY_POWER_BOOST, 160, 1)));
     public static final Holder<Potion> SUPREME_ABILITY_POWER = REGISTER.register("supreme_ability_power",
             () -> new Potion("ability_power", new MobEffectInstance(CodexMobEffects.ABILITY_POWER_BOOST, 100, 2)));
+    public static final Holder<Potion> COOLDOWN_RESET = REGISTER.register("cooldown_reset",
+            () -> new Potion("cooldown_reset", new MobEffectInstance(CodexMobEffects.COOLDOWN_RESET, 1, 0)));
 
     private CodexPotions() {}
 
@@ -33,5 +35,6 @@ public final class CodexPotions {
         event.getBuilder().addMix(Potions.AWKWARD, Items.GOLDEN_APPLE, ABILITY_POWER);
         event.getBuilder().addMix(ABILITY_POWER, Items.GLOWSTONE_DUST, STRONG_ABILITY_POWER);
         event.getBuilder().addMix(STRONG_ABILITY_POWER, Items.GLOWSTONE_DUST, SUPREME_ABILITY_POWER);
+        event.getBuilder().addMix(Potions.AWKWARD, Items.CHORUS_FRUIT, COOLDOWN_RESET);
     }
 }

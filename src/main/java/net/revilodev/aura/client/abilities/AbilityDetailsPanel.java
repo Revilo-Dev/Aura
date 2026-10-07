@@ -300,6 +300,9 @@ public final class AbilityDetailsPanel extends AbstractWidget {
             thirdText = "Damage +" + fmt(3.0D * (strengthAmp + 1));
         } else if (id == AbilityId.FORCE_AEGIS) {
             thirdText = "Dmg Avoids " + Math.max(1, (int) Math.round(level));
+        } else if (id == AbilityId.FORCE_SHOCKWAVE) {
+            durationText = "Waves " + Math.max(1, level) + " | Duration " + formatSeconds(AbilityScaling.shockwaveDurationTicks(level, finalForm));
+            thirdText = "Width " + fmt(AbilityScaling.radius(id, level, 1.0D)) + " | Distance " + fmt(AbilityScaling.shockwaveDistance(level, 1.0D, finalForm));
         } else if (id.specialization() == AbilitySpecialization.NOVA) {
             durationText = "Duration " + formatSeconds(AbilityScaling.auraDurationTicks(level, finalForm));
             thirdText = "Radius " + fmt(AbilityScaling.auraRadius(level, finalForm));

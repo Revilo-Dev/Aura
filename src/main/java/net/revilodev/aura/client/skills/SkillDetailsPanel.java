@@ -233,6 +233,7 @@ public final class SkillDetailsPanel extends AbstractWidget {
             case LOOTING -> "+" + fmt(SkillBalance.lootingChance(level) * 100.0D) + "% looting";
             case FORTUNE -> "+" + SkillBalance.fortuneBonus(level) + " fortune";
             case LUCK_OF_THE_SEA -> "+" + fmt(SkillBalance.luckOfTheSea(level)) + " fishing luck";
+            case XP_FORTUNE -> "+" + (level * 50) + "% XP gain";
         };
     }
 

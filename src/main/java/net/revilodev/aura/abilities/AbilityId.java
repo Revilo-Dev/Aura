@@ -32,12 +32,13 @@ public enum AbilityId {
     POISON_BURST(AbilityElement.POISON, AbilitySpecialization.BURST, AbilityNodeType.SPECIALIZATION, POISON_NOVA, SkillId.LUCK, 1, 120, "poison_burst"),
     POISON_IMPLODE(AbilityElement.POISON, AbilitySpecialization.IMPLODE, AbilityNodeType.SPECIALIZATION, POISON_BURST, SkillId.LUCK, 1, 260, "poison_implode"),
 
-    FORCE(AbilityElement.FORCE, null, AbilityNodeType.CORE, null, SkillId.RESISTANCE, 5, 0, "force"),
+    FORCE(AbilityElement.FORCE, null, AbilityNodeType.CORE, null, SkillId.RESISTANCE, 6, 0, "force"),
     FORCE_AEGIS(AbilityElement.FORCE, AbilitySpecialization.AEGIS, AbilityNodeType.SPECIALIZATION, FORCE, SkillId.RESISTANCE, 1, 260, "aegis"),
     FORCE_BURST(AbilityElement.FORCE, AbilitySpecialization.BURST, AbilityNodeType.SPECIALIZATION, FORCE_AEGIS, SkillId.RESISTANCE, 1, 180, "blast"),
-    FORCE_RAMPAGE(AbilityElement.FORCE, AbilitySpecialization.RAMPAGE, AbilityNodeType.SPECIALIZATION, FORCE_BURST, SkillId.RESISTANCE, 1, 1800, "rampage"),
+    FORCE_SHOCKWAVE(AbilityElement.FORCE, AbilitySpecialization.SHOCKWAVE, AbilityNodeType.SPECIALIZATION, FORCE_BURST, SkillId.RESISTANCE, 1, 240, "shockwave"),
+    FORCE_RAMPAGE(AbilityElement.FORCE, AbilitySpecialization.RAMPAGE, AbilityNodeType.SPECIALIZATION, FORCE_SHOCKWAVE, SkillId.RESISTANCE, 1, 1800, "rampage"),
 
-    BLOOD(AbilityElement.BLOOD, null, AbilityNodeType.CORE, null, SkillId.VITALITY, 4, 0, "blood"),
+    BLOOD(AbilityElement.BLOOD, null, AbilityNodeType.CORE, null, SkillId.VITALITY, 5, 0, "blood"),
     BLOOD_HEAL(AbilityElement.BLOOD, AbilitySpecialization.STRIKE, AbilityNodeType.SPECIALIZATION, BLOOD, SkillId.VITALITY, 1, 180, "heal"),
     BLOOD_CLEANSE(AbilityElement.BLOOD, AbilitySpecialization.AEGIS, AbilityNodeType.SPECIALIZATION, BLOOD_HEAL, SkillId.VITALITY, 1, 240, "cleanse"),
     BLOOD_BURST(AbilityElement.BLOOD, AbilitySpecialization.BURST, AbilityNodeType.SPECIALIZATION, BLOOD_CLEANSE, SkillId.VITALITY, 5, 160, "blood-burst"),
@@ -68,8 +69,8 @@ public enum AbilityId {
         this.iconName = iconName;
     }
 
-    public String title() { return Component.translatable("ability.aura." + iconName + ".name").getString(); }
-    public String description() { return Component.translatable("ability.aura." + iconName + ".description").getString(); }
+    public String title() { return Component.translatable("ability.aura." + localizationName() + ".name").getString(); }
+    public String description() { return Component.translatable("ability.aura." + localizationName() + ".description").getString(); }
     public AbilityElement element() { return element; }
     public AbilitySpecialization specialization() { return specialization; }
     public AbilityNodeType type() { return type; }
@@ -94,20 +95,32 @@ public enum AbilityId {
     }
 
     public ResourceLocation iconTexture() {
+        if (this == FORCE_SHOCKWAVE) return ResourceLocation.fromNamespaceAndPath("aura", "textures/gui/abilities/force-shockwave.png");
         return ResourceLocation.fromNamespaceAndPath("aura", "textures/gui/abilities/" + iconName + ".png");
     }
 
     public ResourceLocation iconTexture(boolean finalForm) {
+        if (this == FORCE_SHOCKWAVE && finalForm) {
+            return ResourceLocation.fromNamespaceAndPath("aura", "textures/gui/abilities/singularity-shockwave.png");
+        }
         if (!finalForm) return iconTexture();
         return ResourceLocation.fromNamespaceAndPath("aura", "textures/gui/abilities/" + finalIconName() + ".png");
     }
 
     public String title(boolean finalForm) {
-        return finalForm ? Component.translatable("ability.aura." + finalIconName() + ".name").getString() : title();
+        return finalForm ? Component.translatable("ability.aura." + finalLocalizationName() + ".name").getString() : title();
     }
 
     public String description(boolean finalForm) {
-        return finalForm ? Component.translatable("ability.aura." + finalIconName() + ".description").getString() : description();
+        return finalForm ? Component.translatable("ability.aura." + finalLocalizationName() + ".description").getString() : description();
+    }
+
+    private String localizationName() {
+        return this == FORCE_SHOCKWAVE ? "shockwave" : iconName;
+    }
+
+    private String finalLocalizationName() {
+        return this == FORCE_SHOCKWAVE ? "ultimate-singularity_shockwave" : finalIconName();
     }
 
     private String finalIconName() {
@@ -137,6 +150,7 @@ public enum AbilityId {
             case FORCE -> "ultimate-singularity";
             case FORCE_AEGIS -> "ultimate-singularity_aegis";
             case FORCE_BURST -> "ultimate-singularity_implode";
+            case FORCE_SHOCKWAVE -> "ultimate-singularity_implode";
             case FORCE_RAMPAGE -> "ultimate-singularity_rampage";
             case BLOOD -> "ultimate-bloodfire";
             case BLOOD_HEAL -> "ultimate-bloodfire-heal";

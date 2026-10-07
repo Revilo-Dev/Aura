@@ -14,5 +14,6 @@ public enum AbilitySpecialization {
     ZAP,
     AEGIS,
     RAMPAGE,
+    SHOCKWAVE,
     BASH
 }

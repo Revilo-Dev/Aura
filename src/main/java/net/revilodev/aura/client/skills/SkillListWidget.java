@@ -201,8 +201,11 @@ public final class SkillListWidget extends AbstractWidget {
         }
         gg.disableScissor();
         if (hoveredTooltip != null) {
+            gg.pose().pushPose();
+            gg.pose().translate(0.0F, 0.0F, 500.0F);
             gg.renderTooltip(mc.font, hoveredTooltip, java.util.Optional.empty(), mouseX,
                     raisedTooltipY(hoveredTooltip, mouseY, getY() + height));
+            gg.pose().popPose();
         }
     }
 

@@ -147,6 +147,13 @@ public final class PlayerAbilities implements INBTSerializable<CompoundTag> {
         else activeTicks.put(id, next);
     }
 
+    public boolean resetCooldowns() {
+        boolean changed = !cooldowns.isEmpty() || !switchCooldowns.isEmpty();
+        cooldowns.clear();
+        switchCooldowns.clear();
+        return changed;
+    }
+
     // sets the specialization switch cooldown
     public void setSwitchCooldownTicks(AbilityId id, int ticks) {
         if (id == null) return;

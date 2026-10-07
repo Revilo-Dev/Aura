@@ -20,6 +20,7 @@ import net.neoforged.neoforge.event.entity.living.LivingKnockBackEvent;
 import net.neoforged.neoforge.event.entity.living.MobEffectEvent;
 import net.neoforged.neoforge.event.entity.player.PlayerEvent;
 import net.neoforged.neoforge.event.entity.player.PlayerEvent.BreakSpeed;
+import net.neoforged.neoforge.event.entity.player.PlayerXpEvent;
 import net.neoforged.neoforge.event.level.BlockDropsEvent;
 import net.neoforged.neoforge.event.tick.PlayerTickEvent;
 import net.revilodev.aura.skills.PlayerSkills;
@@ -47,6 +48,7 @@ public final class SkillEvents {
         NeoForge.EVENT_BUS.addListener(SkillEvents::onFinalDamage);
         NeoForge.EVENT_BUS.addListener(SkillEvents::onKnockback);
         NeoForge.EVENT_BUS.addListener(SkillEvents::onBreakSpeed);
+        NeoForge.EVENT_BUS.addListener(SkillEvents::onXpChange);
         NeoForge.EVENT_BUS.addListener(SkillEvents::onPlayerTick);
         NeoForge.EVENT_BUS.addListener(SkillEvents::onMobEffectApplicable);
         NeoForge.EVENT_BUS.addListener(SkillEvents::onLogout);
@@ -166,6 +168,14 @@ public final class SkillEvents {
         int haste = SkillLogic.effectiveLevel(sp, data, SkillId.HASTE);
         if (haste <= 0) return;
         event.setNewSpeed((float) (event.getNewSpeed() + SkillBalance.hasteBreakSpeed(haste)));
+    }
+
+    private static void onXpChange(PlayerXpEvent.XpChange event) {
+        if (!(event.getEntity() instanceof ServerPlayer player) || event.getAmount() <= 0) return;
+        PlayerSkills skills = player.getData(SkillsAttachments.PLAYER_SKILLS.get());
+        int level = SkillLogic.effectiveLevel(player, skills, SkillId.XP_FORTUNE);
+        if (level <= 0) return;
+        event.setAmount((int) Math.round(event.getAmount() * (1.0D + level * 0.5D)));
     }
 
     private static void onPlayerTick(PlayerTickEvent.Post event) {

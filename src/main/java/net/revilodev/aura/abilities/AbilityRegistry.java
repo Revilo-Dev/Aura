@@ -11,7 +11,7 @@ public final class AbilityRegistry {
             AbilityId.ICE, AbilityId.ICE_BURST, AbilityId.ICE_NOVA, AbilityId.ICE_PIERCE, AbilityId.ICE_IMPLODE, AbilityId.ICE_STORM,
             AbilityId.LIGHTNING, AbilityId.LIGHTNING_STRIKE, AbilityId.LIGHTNING_ZAP, AbilityId.LIGHTNING_NOVA, AbilityId.LIGHTNING_IMPLODE, AbilityId.LIGHTNING_STORM,
             AbilityId.POISON, AbilityId.POISON_BURST, AbilityId.POISON_NOVA, AbilityId.POISON_IMPLODE,
-            AbilityId.FORCE, AbilityId.FORCE_AEGIS, AbilityId.FORCE_BURST, AbilityId.FORCE_RAMPAGE,
+            AbilityId.FORCE, AbilityId.FORCE_AEGIS, AbilityId.FORCE_BURST, AbilityId.FORCE_SHOCKWAVE, AbilityId.FORCE_RAMPAGE,
             AbilityId.BLOOD, AbilityId.BLOOD_HEAL, AbilityId.BLOOD_CLEANSE, AbilityId.BLOOD_BURST, AbilityId.BLOOD_DRAIN,
             AbilityId.WIND, AbilityId.WIND_DASH, AbilityId.WIND_LEAP, AbilityId.WIND_LUNGE
     );

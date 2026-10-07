@@ -18,6 +18,8 @@ build
 .gradle
 AGENTS.md
 PROJECT_MAP.md
+CHANGELOG.md
+AURA_COMPLETE_GUIDE.md
 
 # other
 eclipse

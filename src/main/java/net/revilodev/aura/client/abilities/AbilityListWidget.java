@@ -313,8 +313,11 @@ public final class AbilityListWidget extends AbstractWidget {
         }
         gg.disableScissor();
         if (hoveredTooltip != null) {
+            gg.pose().pushPose();
+            gg.pose().translate(0.0F, 0.0F, 500.0F);
             gg.renderTooltip(mc.font, hoveredTooltip, java.util.Optional.empty(), mouseX,
                     raisedTooltipY(hoveredTooltip, mouseY - 4, viewportY + viewportH));
+            gg.pose().popPose();
         }
     }
 
@@ -475,6 +478,9 @@ public final class AbilityListWidget extends AbstractWidget {
             thirdText = "Damage +" + fmt(3.0D * (strengthAmp + 1));
         } else if (id == AbilityId.FORCE_AEGIS) {
             thirdText = "Dmg Avoids " + Math.max(1, (int) Math.round(level));
+        } else if (id == AbilityId.FORCE_SHOCKWAVE) {
+            durationText = "Waves " + Math.max(1, level) + " | Duration " + formatSeconds(AbilityScaling.shockwaveDurationTicks(level, finalForm));
+            thirdText = "Width " + fmt(AbilityScaling.radius(id, level, 1.0D)) + " | Distance " + fmt(AbilityScaling.shockwaveDistance(level, 1.0D, finalForm));
         } else if (id.specialization() == AbilitySpecialization.NOVA) {
             thirdText = "Radius " + fmt(AbilityScaling.radius(id, level, 1.0D) + 1.5D);
         }

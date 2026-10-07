@@ -30,7 +30,8 @@ public enum SkillId {
     BLAST_RESISTANCE(SkillCategory.RESISTANCE, false, RESISTANCE, "resistance-blast", "resistance-blast", 5),
     ATTACK_SPEED(SkillCategory.AGILITY, false, AGILITY, "agility-attack-speed", "strength-haste", 5),
     SWIMMING_SPEED(SkillCategory.AGILITY, false, AGILITY, "agility-swimming-speed", "agility-water", 5),
-    LUCK_OF_THE_SEA(SkillCategory.LUCK, false, LUCK, "luck-luck-of-the-sea", "luck-sea", 5);
+    LUCK_OF_THE_SEA(SkillCategory.LUCK, false, LUCK, "luck-luck-of-the-sea", "luck-sea", 5),
+    XP_FORTUNE(SkillCategory.LUCK, false, LUCK, "luck-xp-fortune", "luck-xp", 3);
 
     private final SkillCategory category;
     private final boolean primary;
